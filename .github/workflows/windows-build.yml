@@ -1,0 +1,50 @@
+name: Windows build
+
+on:
+  push:
+    branches:
+      - main
+      - "production/**"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: dotnet restore FASX.sln
+
+      - name: Build
+        run: dotnet build FASX.sln --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test FASX.sln --configuration Release --no-build
+
+      - name: Publish Windows companion
+        run: dotnet publish src/Fasx.Agent.Windows/Fasx.Agent.Windows.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true --output artifacts/windows
+
+      - name: Upload Windows companion
+        uses: actions/upload-artifact@v4
+        with:
+          name: fasx-windows-companion-win-x64
+          path: artifacts/windows/
+          if-no-files-found: error
+          retention-days: 14

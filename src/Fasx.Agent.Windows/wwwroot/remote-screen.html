@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>FASX Remote Screen</title>
+  <style>
+    :root { color-scheme: dark; font-family: "Segoe UI", Arial, sans-serif; background: #0b1020; color: #f4f7ff; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 16px; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    button { border: 0; border-radius: 10px; padding: 11px 16px; background: #3978e8; color: white; font-weight: 650; cursor: pointer; }
+    button.secondary { background: #293750; }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    #status { color: #aab6cc; font-size: 13px; margin: 14px 0; min-height: 20px; }
+    .hint { background: #182744; border: 1px solid #2b3d60; border-radius: 12px; padding: 13px; color: #c6d4ec; line-height: 1.5; font-size: 12px; }
+    video { display: block; width: 100%; max-height: 460px; min-height: 240px; margin-top: 14px; object-fit: contain; background: #050811; border: 1px solid #2b3d60; border-radius: 14px; }
+    .small { color: #8190aa; font-size: 11px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <button id="startButton" type="button">Start screen sharing</button>
+    <button id="stopButton" class="secondary" type="button" disabled>Stop sharing</button>
+  </div>
+
+  <div id="status" role="status" aria-live="polite">
+    Screen capture is off. Nothing is being sent.
+  </div>
+
+  <div class="hint">
+    Press Start and choose the display or application window in the Windows picker.
+    Windows shows a visible capture border while sharing. Share only content you
+    intend the approved phone to see. No keyboard, mouse, audio, files, or clipboard
+    data is sent by this view-only stream. Closing this window or pressing Stop ends
+    the capture.
+  </div>
+
+  <video id="localPreview" autoplay playsinline muted></video>
+  <div class="small">Same-Wi-Fi WebRTC video • No public relay or internet traversal in this build</div>
+
+  <script src="remote-screen.js"></script>
+</body>
+</html>

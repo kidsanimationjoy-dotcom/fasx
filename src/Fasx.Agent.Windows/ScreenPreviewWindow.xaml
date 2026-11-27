@@ -1,0 +1,49 @@
+<Window x:Class="Fasx.Agent.Windows.ScreenPreviewWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+        Title="FASX — Screen Capture Preview"
+        Width="1120"
+        Height="780"
+        MinWidth="820"
+        MinHeight="600"
+        WindowStartupLocation="CenterOwner"
+        Background="#0B1020"
+        Foreground="#F4F7FF"
+        Loaded="Window_Loaded"
+        Closed="Window_Closed">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="14" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0">
+            <TextBlock Text="FASX REMOTE" FontSize="11" FontWeight="Bold" Foreground="#8FB7FF" />
+            <TextBlock Text="Screen capture preview" FontSize="25" FontWeight="SemiBold" Margin="0,5,0,4" />
+            <TextBlock Text="This test uses the Windows screen-sharing picker. Nothing is sent to your phone in this build."
+                       FontSize="13" Foreground="#AAB6CC" TextWrapping="Wrap" />
+        </StackPanel>
+
+        <Border Grid.Row="2" Background="#151D32" CornerRadius="18" Padding="12">
+            <wv2:WebView2 x:Name="ScreenBrowser" />
+        </Border>
+
+        <DockPanel Grid.Row="3" Margin="2,12,2,0">
+            <TextBlock x:Name="CaptureStatusText"
+                       Text="Starting the local preview..."
+                       Foreground="#AAB6CC"
+                       FontSize="11"
+                       VerticalAlignment="Center"
+                       TextWrapping="Wrap" />
+            <TextBlock DockPanel.Dock="Right"
+                       Text="Windows picker required • Stop ends capture"
+                       Foreground="#8FB7FF"
+                       FontSize="10"
+                       Margin="12,0,0,0"
+                       VerticalAlignment="Center" />
+        </DockPanel>
+    </Grid>
+</Window>

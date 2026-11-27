@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src blob:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>FASX Screen Capture Preview</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: #0b1020;
+      color: #f4f7ff;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 18px; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    button {
+      border: 0; border-radius: 10px; padding: 11px 16px;
+      background: #3978e8; color: white; font-weight: 650; cursor: pointer;
+    }
+    button.secondary { background: #293750; }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    .status { color: #aab6cc; font-size: 13px; margin: 14px 0; min-height: 20px; }
+    .hint {
+      background: #182744; border: 1px solid #2b3d60; border-radius: 12px;
+      padding: 13px; color: #c6d4ec; line-height: 1.5; font-size: 12px;
+    }
+    video {
+      display: block; width: 100%; max-height: 470px; min-height: 260px;
+      margin-top: 14px; object-fit: contain; background: #050811;
+      border: 1px solid #2b3d60; border-radius: 14px;
+    }
+    .small { color: #8190aa; font-size: 11px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <button id="startButton" type="button">Start local preview</button>
+    <button id="stopButton" class="secondary" type="button" disabled>Stop preview</button>
+  </div>
+
+  <div id="status" class="status" role="status" aria-live="polite">
+    Capture is off. Nothing is being shared.
+  </div>
+
+  <div class="hint">
+    When you select Start preview, Windows opens its own picker. Choose only the
+    display or application window you intend to share. Windows shows a visible
+    capture border while sharing. If you choose the entire display, minimize this
+    preview window after capture starts to avoid a recursive mirror effect.
+    Closing this window or pressing Stop ends capture.
+  </div>
+
+  <video id="preview" autoplay playsinline muted></video>
+  <div class="small">
+    Local capture test only. This build does not transmit screen frames to another device.
+  </div>
+
+  <script src="screen-preview.js"></script>
+</body>
+</html>
