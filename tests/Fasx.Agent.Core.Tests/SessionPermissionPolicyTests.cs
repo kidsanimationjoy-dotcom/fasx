@@ -1,3 +1,4 @@
+using Xunit;
 using Fasx.Agent.Core.Security;
 using Fasx.Agent.Core.Sessions;
 
