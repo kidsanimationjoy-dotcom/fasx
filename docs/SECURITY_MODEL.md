@@ -9,6 +9,15 @@
 5. Fail closed: network loss, expired grants, invalid state, or agent failure disables remote input and capture.
 6. Minimize data: do not log screen content, typed text, clipboard payloads, or file contents by default.
 
+## Device identity at rest
+
+- The Windows host owns a stable P-256 signing identity.
+- The private key is stored encrypted with Windows DPAPI using the current-user scope.
+- The identity file is never stored as plaintext in the repository or transmitted over the network.
+- If the identity cannot be decrypted or validated, FASX must stop and report the problem rather than silently rotating to a new identity.
+- The Android client will use Android Keystore for its corresponding private key.
+- A device identity does not by itself grant remote access; pairing and per-session approval remain separate.
+
 ## Pairing requirements
 
 - Pairing challenge is random, single-use, short-lived, and bound to the expected host device.
