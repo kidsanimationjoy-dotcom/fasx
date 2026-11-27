@@ -29,20 +29,20 @@
 - [ ] Installer/package for the host and debug/release package for Android.
 
 ## Milestone 2 — First real remote session
-**Status: local Windows capture preview added; remote streaming remains open.**
-- [x] WebView2 local screen-capture preview using `getDisplayMedia()`.
-- [x] System-owned screen/window selection and visible Windows capture indication.
-- [x] Local Stop action and capture end handling.
-- [ ] Run the screen preview on a real supported Windows laptop.
-- [ ] Select and license-review a maintained WebRTC implementation.
-- [ ] Authenticated session request from a paired Android device.
-- [ ] Windows-local approval for ViewScreen.
-- [ ] Android screen-view receiver.
-- [ ] Exchange WebRTC offer/answer and ICE candidates over pinned signaling.
-- [ ] Screen view only; no remote input in this milestone.
-- [ ] Clear active-session indicator and local Stop on Windows.
-- [ ] Direct LAN test and network-interruption handling.
-- [ ] TURN relay fallback test for later internet access.
+**Status: view-only WebRTC source implementation is present; build and real-device validation are pending.**
+- [x] WebView2 screen capture through `getDisplayMedia()` and the system-owned picker.
+- [x] Separate session request signed by the paired Android device key.
+- [x] Windows-local approval for `ViewScreen` only, with a 10-minute maximum lease.
+- [x] Token-protected offer/answer signaling over a pinned temporary HTTPS endpoint.
+- [x] Android WebView receiver page using a receive-only video transceiver.
+- [x] Windows WebView2 sender page; screen sharing begins only after a local Start click and picker selection.
+- [x] Local Stop and permission revocation on capture end, explicit stop, session expiry or phone disconnect.
+- [ ] Latest Windows and Android CI build/package pass for this screen-streaming commit.
+- [ ] Real-device same-Wi-Fi test on the target Windows laptop and Android phone.
+- [ ] Validate candidate gathering and video quality across supported Wi-Fi routers.
+- [ ] Test app backgrounding, phone sleep, Wi-Fi drop and fast reconnect.
+- [ ] Document frame rate, resolution, thermal and network usage on target devices.
+- [ ] Add TURN relay only in a later internet-access milestone after design and cost review.
 
 
 ## Milestone 3 — Input and connection quality
