@@ -1,6 +1,5 @@
 using Fasx.Agent.Core.Security;
 using Fasx.Agent.Core.Sessions;
-using Xunit;
 
 namespace Fasx.Agent.Core.Tests;
 

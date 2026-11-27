@@ -1,28 +1,30 @@
 # FASX Production Roadmap
 
-## Milestone 0 — Repository and Windows foundation
-**Status: committed to production/foundation; automated build validation pending.**
+## Milestone 0 — Repository and client foundations
+**Status: committed to production/foundation; CI validation pending.**
 - Product and technical baseline documented.
-- Windows companion WPF shell created.
-- Shared session permission model created.
-- Unit tests for permission boundaries added.
-- Windows CI workflow added.
+- Visible Windows companion shell created.
+- Shared session-permission model and tests created.
+- In-memory pairing ceremony domain and tests created.
+- Android Compose foundation UI created.
+- Windows and Android build workflows added.
 
-The current Windows shell is a visible foundation screen only. It does not yet pair devices, stream a screen, transfer files, or accept remote input.
+The Windows and Android screens are foundation previews only. They do not yet pair devices, stream a screen, transfer files, or accept remote input.
 
-## Milestone 1 — Pairing and local consent
-- Device identity and secure local storage.
+## Milestone 1 — Secure device pairing
+- Windows-protected host identity and phone key storage.
 - Short-lived single-use QR pairing.
-- Local host approval screen.
-- Paired-device list and revoke action.
-- Session permission chooser.
-- Audit events for pairing and approval.
+- Authenticated HTTPS signaling endpoints.
+- Host-side local approval screen and device details.
+- Paired-device list, revocation and audit history.
+- Android QR scanning and key enrollment.
+- Persist device trust safely and prove device-key possession.
 
 ## Milestone 2 — First real remote session
 - WebRTC proof of concept.
 - Windows system capture picker integration.
-- Android session UI.
-- Screen view only, before remote input.
+- Android session viewer.
+- Screen viewing first, before remote input.
 - Clear active-session indicator and local stop.
 - Direct LAN test plus relay fallback test.
 

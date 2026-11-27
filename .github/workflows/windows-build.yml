@@ -20,10 +20,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install .NET 10 SDK
+      - name: Install .NET 10 LTS SDK
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: "10.0.x"
+          dotnet-version: "10.0.404"
 
       - name: Restore
         run: dotnet restore FASX.sln
