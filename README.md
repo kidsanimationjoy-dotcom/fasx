@@ -4,7 +4,7 @@
 
 FASX is an all-in-one personal computer command centre combining secure remote desktop, device management, customizable controls, and user-approved automation.
 
-> **Project status: early development.** The repository contains a visible Windows companion, testable session/pairing security logic, DPAPI-protected Windows storage for trusted device identities, a temporary same-LAN HTTPS pairing service, and an Android Compose client with QR scanning and Android Keystore device identity. This is an engineering milestone, not yet a remote desktop release.
+> **Project status: early development.** The repository contains same-LAN phone pairing, a local Windows session-approval gate, and a source implementation of a view-only WebRTC screen stream using the Windows capture picker and an Android receiver. CI and physical-device checks are still required; this is not a production remote-desktop release.
 
 ## Product vision
 
@@ -67,11 +67,11 @@ cd apps/android
 gradle --no-daemon :app:assembleDebug
 ```
 
-The Android app scans and validates a QR invitation, asks the phone owner to confirm the displayed computer address, creates a P-256 signing key in Android Keystore, pins the temporary Windows host certificate, submits a claim over HTTPS, and polls for local approval.
+The Android app scans QR pairing or view-session invitations, asks the phone owner to confirm the computer address, creates its P-256 signing key in Android Keystore, pins the temporary Windows host certificate, and submits signed requests over HTTPS. A view-only request requires Windows-local approval before a WebRTC offer can be retrieved.
 
 ## Current capabilities and limitations
 
-**Implemented in source (build and device verification pending):**
+**Implemented in source (latest build and real-device verification still pending):**
 - Local permission policy and tests.
 - Short-lived, single-use pairing invitations.
 - Device proof verification using ECDSA P-256 / SHA-256.
@@ -80,11 +80,15 @@ The Android app scans and validates a QR invitation, asks the phone owner to con
 - Temporary same-LAN IPv4 HTTPS pairing endpoint.
 - Android QR scanner, strict invitation parsing, Android Keystore device identity, pinned HTTPS claim and status polling.
 - Local Windows screen-capture preview using WebView2 and the Windows-owned display/window picker.
+- A signed remote-session request from an already-paired Android device.
+- Windows-local approval for the `ViewScreen` permission with a short, separate session lease.
+- Token-protected, same-LAN WebRTC offer/answer signaling over the pinned HTTPS session endpoint.
+- Windows WebView2 video sender and Android WebView video receiver. The Windows owner must press Start and choose the screen/window.
 
 **Not implemented yet:**
 - Verified CI build or signed installer.
 - Real phone-to-Windows pairing test.
-- Live screen streaming from Windows to the phone (the current screen feature is local preview only).
+- Verified real-device screen streaming (the source implementation is present but not yet tested on the target laptop/phone).
 - Remote keyboard/mouse input.
 - File transfer and clipboard synchronization.
 - Internet relay / remote-from-anywhere connections.
@@ -94,13 +98,14 @@ The Android app scans and validates a QR invitation, asks the phone owner to con
 
 - Windows companion: C# / .NET 10 LTS / WPF.
 - Android client: Kotlin and Jetpack Compose.
-- Control plane: ASP.NET Core for internet signaling and device presence.
-- Candidate media transport: WebRTC, pending an end-to-end proof of concept.
+- Local view-session signaling: temporary ASP.NET Core HTTPS endpoint bound to one private IPv4 address.
+- Local media transport: browser-native WebRTC with no STUN/TURN relay in this first LAN-only prototype.
+- Internet signaling and relay infrastructure are not implemented.
 - Local pairing uses HTTPS with an invitation-bound SHA-256 SPKI pin.
 - Windows device records are protected with DPAPI for the current Windows user.
 - Android device signing keys are held in Android Keystore.
 
-Read [the architecture](docs/ARCHITECTURE.md), [security model](docs/SECURITY_MODEL.md), [pairing flow](docs/PAIRING_FLOW.md), and [remote screen design](docs/REMOTE_SCREEN_DESIGN.md).
+Read [the architecture](docs/ARCHITECTURE.md), [security model](docs/SECURITY_MODEL.md), [pairing flow](docs/PAIRING_FLOW.md), [remote screen design](docs/REMOTE_SCREEN_DESIGN.md), and [local device test checklist](docs/LOCAL_PAIRING_TEST.md).
 
 ## Non-negotiable safety principles
 
