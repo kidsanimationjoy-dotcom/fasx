@@ -102,6 +102,13 @@
                             Background="#3978E8"
                             Foreground="White"
                             FontWeight="SemiBold" />
+                    <Button Content="Preview screen capture"
+                            Click="PreviewScreen_Click"
+                            Margin="0,8,0,0"
+                            Padding="12,10"
+                            Background="#263A5C"
+                            Foreground="White"
+                            FontWeight="SemiBold" />
                 </StackPanel>
             </Border>
 
