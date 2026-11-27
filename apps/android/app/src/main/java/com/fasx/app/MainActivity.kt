@@ -1,6 +1,7 @@
 package com.fasx.app
 
 import android.os.Bundle
+import android.content.Context
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.clickable
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -34,6 +36,11 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -54,6 +61,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -66,6 +74,86 @@ private val FasxBlue = Color(0xFF5B94FF)
 private val FasxText = Color(0xFFF2F6FF)
 private val FasxMuted = Color(0xFF9EACC5)
 private val FasxGreen = Color(0xFF56D6A2)
+
+private data class SmartDeckConfig(
+    val experience: String,
+    val order: List<String>,
+    val visible: Set<String>
+)
+
+private data class ModuleInfo(
+    val id: String,
+    val title: String,
+    val subtitle: String,
+    val icon: ImageVector
+)
+
+private val defaultModuleOrder = listOf(
+    "remote", "touchpad", "files", "health", "quick", "flows"
+)
+
+private val moduleCatalog = listOf(
+    ModuleInfo("remote", "Remote Desktop", "View and control", Icons.Outlined.Monitor),
+    ModuleInfo("touchpad", "Touchpad", "Mouse and keyboard", Icons.Outlined.TouchApp),
+    ModuleInfo("files", "File Bridge", "Move files safely", Icons.Outlined.Folder),
+    ModuleInfo("health", "PC Health", "Understand your PC", Icons.Outlined.HealthAndSafety),
+    ModuleInfo("quick", "Quick Actions", "Your shortcuts", Icons.Outlined.Bolt),
+    ModuleInfo("flows", "FASX Flows", "Approved workflows", Icons.Outlined.Bolt)
+)
+
+private val moduleById = moduleCatalog.associateBy { it.id }
+
+private val experiencePresets = mapOf(
+    "Everyday" to listOf("remote", "touchpad", "files", "health", "quick", "flows"),
+    "Student" to listOf("remote", "touchpad", "files", "quick", "health", "flows"),
+    "Professional" to listOf("quick", "remote", "files", "health", "touchpad", "flows"),
+    "Creator" to listOf("files", "remote", "touchpad", "quick", "flows", "health"),
+    "Business & IT" to listOf("health", "remote", "files", "quick", "flows", "touchpad")
+)
+
+private object SmartDeckStorage {
+    private const val PREFS_NAME = "fasx.smartdeck"
+    private const val ORDER_KEY = "order"
+    private const val VISIBLE_KEY = "visible"
+    private const val EXPERIENCE_KEY = "experience"
+
+    fun load(context: Context): SmartDeckConfig {
+        val preferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val experience = preferences.getString(EXPERIENCE_KEY, "Everyday") ?: "Everyday"
+        val savedOrder = preferences.getString(ORDER_KEY, null)
+            ?.split(",")
+            ?.filter { it in moduleById.keys }
+            .orEmpty()
+        val order = (savedOrder + defaultModuleOrder).distinct()
+        val savedVisible = preferences.getStringSet(VISIBLE_KEY, null)
+        val visible = (savedVisible?.filter { it in moduleById.keys }?.toSet()
+            ?: defaultModuleOrder.toSet()).ifEmpty { setOf(defaultModuleOrder.first()) }
+
+        return SmartDeckConfig(
+            experience = experience,
+            order = order,
+            visible = visible
+        )
+    }
+
+    fun save(context: Context, config: SmartDeckConfig) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putString(EXPERIENCE_KEY, config.experience)
+            .putString(ORDER_KEY, config.order.joinToString(","))
+            .putStringSet(VISIBLE_KEY, config.visible.toSet())
+            .apply()
+    }
+
+    fun selectExperience(experience: String): SmartDeckConfig {
+        val preset = experiencePresets[experience] ?: defaultModuleOrder
+        return SmartDeckConfig(
+            experience = experience,
+            order = preset,
+            visible = preset.toSet()
+        )
+    }
+}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -95,8 +183,11 @@ private enum class FasxTab(val label: String) {
 
 @Composable
 private fun FasxApp() {
+    val context = LocalContext.current
     var selectedTab by remember { mutableStateOf(FasxTab.HOME) }
     var showPairingInfo by remember { mutableStateOf(false) }
+    var showDeckEditor by remember { mutableStateOf(false) }
+    var deckConfig by remember(context) { mutableStateOf(SmartDeckStorage.load(context)) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -139,13 +230,21 @@ private fun FasxApp() {
             Spacer(Modifier.height(24.dp))
 
             when (selectedTab) {
-                FasxTab.HOME -> HomeDashboard { module ->
-                    scope.launch {
-                        snackbarHostState.showSnackbar(
-                            "$module is planned for a later connected build. No remote action was sent."
-                        )
+                FasxTab.HOME -> HomeDashboard(
+                    config = deckConfig,
+                    onConfigChange = { updated ->
+                        deckConfig = updated
+                        SmartDeckStorage.save(context, updated)
+                    },
+                    onCustomize = { showDeckEditor = true },
+                    onModuleClick = { module ->
+                        scope.launch {
+                            snackbarHostState.showSnackbar(
+                                "$module is a preview card. No remote action was sent."
+                            )
+                        }
                     }
-                }
+                )
                 FasxTab.DEVICES -> DevicesScreen(onPair = { showPairingInfo = true })
                 FasxTab.SECURITY -> SecurityScreen()
             }
@@ -178,6 +277,17 @@ private fun FasxApp() {
             containerColor = FasxPanel,
             titleContentColor = FasxText,
             textContentColor = FasxMuted
+        )
+    }
+
+    if (showDeckEditor) {
+        SmartDeckEditor(
+            config = deckConfig,
+            onConfigChange = { updated ->
+                deckConfig = updated
+                SmartDeckStorage.save(context, updated)
+            },
+            onDismiss = { showDeckEditor = false }
         )
     }
 }
@@ -245,30 +355,91 @@ private fun ConnectionCard(onPair: () -> Unit) {
 }
 
 @Composable
-private fun HomeDashboard(onModuleClick: (String) -> Unit) {
+private fun HomeDashboard(
+    config: SmartDeckConfig,
+    onConfigChange: (SmartDeckConfig) -> Unit,
+    onCustomize: () -> Unit,
+    onModuleClick: (String) -> Unit
+) {
+    var showExperienceMenu by remember { mutableStateOf(false) }
+
     Text("SMARTDECK", color = FasxBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
     Spacer(Modifier.height(6.dp))
     Text("Your command centre", color = FasxText, fontSize = 23.sp, fontWeight = FontWeight.Bold)
     Text("Your controls, your layout, your way.", color = FasxMuted, fontSize = 13.sp)
+    Spacer(Modifier.height(14.dp))
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        androidx.compose.foundation.layout.Box {
+            OutlinedButton(
+                onClick = { showExperienceMenu = true },
+                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 9.dp)
+            ) {
+                Text(config.experience, fontSize = 12.sp)
+            }
+            DropdownMenu(
+                expanded = showExperienceMenu,
+                onDismissRequest = { showExperienceMenu = false }
+            ) {
+                experiencePresets.keys.forEach { experience ->
+                    DropdownMenuItem(
+                        text = { Text(experience) },
+                        onClick = {
+                            onConfigChange(SmartDeckStorage.selectExperience(experience))
+                            showExperienceMenu = false
+                        }
+                    )
+                }
+            }
+        }
+        OutlinedButton(
+            onClick = onCustomize,
+            shape = RoundedCornerShape(12.dp),
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 9.dp)
+        ) {
+            Text("Customize", fontSize = 12.sp)
+        }
+    }
+
     Spacer(Modifier.height(16.dp))
 
-    ModuleRow(
-        ModuleInfo("Remote Desktop", "View and control", Icons.Outlined.Monitor),
-        ModuleInfo("Touchpad", "Mouse and keyboard", Icons.Outlined.TouchApp),
-        onModuleClick
-    )
-    ModuleRow(
-        ModuleInfo("File Bridge", "Move files safely", Icons.Outlined.Folder),
-        ModuleInfo("PC Health", "Understand your PC", Icons.Outlined.HealthAndSafety),
-        onModuleClick
-    )
-    ModuleRow(
-        ModuleInfo("Quick Actions", "Your shortcuts", Icons.Outlined.Bolt),
-        ModuleInfo("FASX Flows", "Approved workflows", Icons.Outlined.Bolt),
-        onModuleClick
-    )
+    val visibleModules = config.order
+        .mapNotNull { moduleById[it] }
+        .filter { it.id in config.visible }
 
-    Spacer(Modifier.height(18.dp))
+    if (visibleModules.isEmpty()) {
+        Card(
+            colors = CardDefaults.cardColors(containerColor = FasxPanel),
+            shape = RoundedCornerShape(18.dp)
+        ) {
+            Column(Modifier.fillMaxWidth().padding(18.dp)) {
+                Text("Your SmartDeck is empty", color = FasxText, fontWeight = FontWeight.SemiBold)
+                Text("Use Customize to add cards to your command centre.", color = FasxMuted, fontSize = 12.sp)
+            }
+        }
+    } else {
+        visibleModules.chunked(2).forEach { rowModules ->
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                rowModules.forEach { module ->
+                    ModuleCard(module, Modifier.weight(1f), onModuleClick)
+                }
+                if (rowModules.size == 1) {
+                    Spacer(Modifier.weight(1f))
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+        }
+    }
+
+    Spacer(Modifier.height(8.dp))
     Card(
         colors = CardDefaults.cardColors(containerColor = FasxPanelRaised),
         shape = RoundedCornerShape(18.dp)
@@ -277,25 +448,116 @@ private fun HomeDashboard(onModuleClick: (String) -> Unit) {
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            androidx.compose.material3.Icon(Icons.Outlined.Computer, contentDescription = null, tint = FasxBlue, modifier = Modifier.size(26.dp))
+            androidx.compose.material3.Icon(
+                Icons.Outlined.Computer,
+                contentDescription = null,
+                tint = FasxBlue,
+                modifier = Modifier.size(26.dp)
+            )
             Spacer(Modifier.width(12.dp))
             Column {
-                Text("SmartDeck is ready to grow", color = FasxText, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                Text("These cards are interface previews. Pairing and controls are not connected yet.", color = FasxMuted, fontSize = 11.sp, lineHeight = 16.sp)
+                Text("Your layout is saved on this phone", color = FasxText, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                Text(
+                    "Modes, card visibility and card order are stored locally. Remote controls remain disconnected in this preview.",
+                    color = FasxMuted,
+                    fontSize = 11.sp,
+                    lineHeight = 16.sp
+                )
             }
         }
     }
 }
 
-private data class ModuleInfo(val title: String, val subtitle: String, val icon: ImageVector)
-
 @Composable
-private fun ModuleRow(first: ModuleInfo, second: ModuleInfo, onClick: (String) -> Unit) {
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-        ModuleCard(first, Modifier.weight(1f), onClick)
-        ModuleCard(second, Modifier.weight(1f), onClick)
-    }
-    Spacer(Modifier.height(12.dp))
+private fun SmartDeckEditor(
+    config: SmartDeckConfig,
+    onConfigChange: (SmartDeckConfig) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Customize SmartDeck") },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 460.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Text(
+                    "Show or hide cards and change their order. Your choices stay on this phone.",
+                    color = FasxMuted,
+                    fontSize = 12.sp,
+                    lineHeight = 18.sp
+                )
+                Spacer(Modifier.height(12.dp))
+
+                config.order.forEachIndexed { index, moduleId ->
+                    val module = moduleById[moduleId] ?: return@forEachIndexed
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(module.title, color = FasxText, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                            Text(module.subtitle, color = FasxMuted, fontSize = 10.sp)
+                        }
+                        TextButton(
+                            onClick = {
+                                if (index > 0) {
+                                    val newOrder = config.order.toMutableList()
+                                    val previous = newOrder[index - 1]
+                                    newOrder[index - 1] = newOrder[index]
+                                    newOrder[index] = previous
+                                    onConfigChange(config.copy(order = newOrder))
+                                }
+                            },
+                            enabled = index > 0,
+                            contentPadding = PaddingValues(horizontal = 6.dp)
+                        ) {
+                            Text("↑")
+                        }
+                        TextButton(
+                            onClick = {
+                                if (index < config.order.lastIndex) {
+                                    val newOrder = config.order.toMutableList()
+                                    val next = newOrder[index + 1]
+                                    newOrder[index + 1] = newOrder[index]
+                                    newOrder[index] = next
+                                    onConfigChange(config.copy(order = newOrder))
+                                }
+                            },
+                            enabled = index < config.order.lastIndex,
+                            contentPadding = PaddingValues(horizontal = 6.dp)
+                        ) {
+                            Text("↓")
+                        }
+                        Checkbox(
+                            checked = moduleId in config.visible,
+                            enabled = moduleId in config.visible && config.visible.size > 1 ||
+                                moduleId !in config.visible,
+                            onCheckedChange = { checked ->
+                                val updated = if (checked) {
+                                    config.visible + moduleId
+                                } else {
+                                    config.visible - moduleId
+                                }
+                                if (updated.isNotEmpty()) {
+                                    onConfigChange(config.copy(visible = updated))
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Done") }
+        },
+        containerColor = FasxPanel,
+        titleContentColor = FasxText,
+        textContentColor = FasxMuted
+    )
 }
 
 @Composable
@@ -311,7 +573,7 @@ private fun ModuleCard(info: ModuleInfo, modifier: Modifier, onClick: (String) -
             Text(info.title, color = FasxText, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             Text(info.subtitle, color = FasxMuted, fontSize = 10.sp)
             Spacer(Modifier.weight(1f))
-            Text("COMING SOON", color = FasxMuted, fontSize = 8.sp, letterSpacing = 0.6.sp)
+            Text("PREVIEW", color = FasxMuted, fontSize = 8.sp, letterSpacing = 0.6.sp)
         }
     }
 }
