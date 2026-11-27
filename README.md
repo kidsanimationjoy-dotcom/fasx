@@ -4,7 +4,7 @@
 
 FASX is an all-in-one personal computer command centre combining secure remote desktop, computer management, customizable controls, and user-approved automation.
 
-> **Project status: foundation preview.** The repository now contains a visible Windows companion shell, an Android Compose interface scaffold, a permission-domain model, and an in-memory pairing ceremony with tests. Device pairing over a network, live screen streaming, remote input, and file transfer are not implemented yet.
+> **Project status: foundation preview.** The repository contains a visible Windows companion shell with a local read-only PC Health panel, an Android Compose interface scaffold, a permission-domain model, and an in-memory pairing ceremony with tests. Device pairing over a network, live screen streaming, remote input, and file transfer are not implemented yet.
 
 ## Product vision
 
@@ -35,12 +35,12 @@ It combines three experiences:
 - **Host:** Windows 10/11 desktop companion, C# / .NET 10 LTS / WPF.
 - **Controller:** Android phone client, Kotlin / Jetpack Compose.
 - **Control plane:** ASP.NET Core.
-- **Media transport:** WebRTC candidate, pending a real end-to-end proof of concept.
+- **Media transport:** WebRTC candidate, pending an end-to-end proof of concept.
 
 ## Repository layout
 
 - `src/Fasx.Agent.Core` — session permissions and pairing domain rules.
-- `src/Fasx.Agent.Windows` — visible Windows companion shell.
+- `src/Fasx.Agent.Windows` — visible Windows companion and local PC health.
 - `apps/android` — Android Compose client foundation.
 - `services/signaling` — signaling/control-plane design entry point.
 - `tests/Fasx.Agent.Core.Tests` — security and domain tests.
@@ -58,7 +58,7 @@ dotnet test FASX.sln -c Release
 
 ## Build the Android foundation
 
-Open `apps/android` in Android Studio and sync Gradle, or use a Gradle 9.6+ installation:
+Open `apps/android` in Android Studio and sync Gradle, or use an installed Gradle 9.6+ distribution:
 
 ```bash
 gradle -p apps/android :app:assembleDebug
@@ -66,12 +66,12 @@ gradle -p apps/android :app:assembleDebug
 
 Version notes are in [docs/ANDROID_BUILD.md](docs/ANDROID_BUILD.md).
 
-## Important current limitations
+## Current limitations
 
-- The Windows app is a visible companion shell only.
+- The Windows app is a local companion with read-only PC Health; remote pairing and control are not connected.
 - The Android app is a UI scaffold with Home, Devices, and Security tabs.
 - PairingCoordinator is an in-memory domain implementation for testing; it is not a network service or durable device registry.
-- QR rendering/scanning, authenticated signaling endpoints, device-key proof, live remote desktop, remote input, and file transfer are still to be implemented.
+- QR rendering/scanning, authenticated signaling endpoints, device-key proof, live remote desktop, remote input, and file transfer remain to be implemented.
 - The phone app does not currently connect to the Windows app.
 
 Do not treat this foundation preview as a working remote-control release.
