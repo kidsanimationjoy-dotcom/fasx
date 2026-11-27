@@ -34,7 +34,11 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
     private ViewSessionInvitation? _invitation;
     private byte[]? _secretHash;
     private bool _claimConsumed;
+    private string? _hostOfferSdp;
+    private string? _phoneAnswerSdp;
     private bool _disposed;
+
+    private const int MaximumSdpLength = 48 * 1024;
 
     private RemoteViewSessionServer(
         WebApplication app,
@@ -97,7 +101,7 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
             builder.Logging.ClearProviders();
             builder.WebHost.ConfigureKestrel(options =>
             {
-                options.Limits.MaxRequestBodySize = 16 * 1024;
+                options.Limits.MaxRequestBodySize = 64 * 1024;
                 options.Listen(hostAddress, Port, listenOptions => listenOptions.UseHttps(certificate));
             });
             builder.Services.AddRateLimiter(options =>
@@ -179,6 +183,55 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
                 var status = authorization.GetStatus(sessionId, DateTimeOffset.UtcNow);
                 return Results.Json(new { status = status.ToString(), permission = "ViewScreen" }, options: JsonOptions);
             }).RequireRateLimiting("view-status");
+            app.MapGet("/api/view/offer/{sessionId:guid}", (Guid sessionId) =>
+            {
+                if (!server.IsKnownSession(sessionId))
+                {
+                    return Results.NotFound(new { error = "View-session request was not found." });
+                }
+
+                if (!authorization.HasPermission(sessionId, SessionPermission.ViewScreen, DateTimeOffset.UtcNow))
+                {
+                    var state = authorization.GetStatus(sessionId, DateTimeOffset.UtcNow);
+                    return Results.Json(new { status = state.ToString() }, options: JsonOptions);
+                }
+
+                var offer = server.GetHostOfferForPhone(sessionId, DateTimeOffset.UtcNow);
+                return offer is null
+                    ? Results.Json(new { status = "WaitingForScreen" }, options: JsonOptions)
+                    : Results.Json(new { status = "OfferReady", sdp = offer }, options: JsonOptions);
+            }).RequireRateLimiting("view-status");
+
+            app.MapPost("/api/view/answer/{sessionId:guid}", async (Guid sessionId, HttpContext context) =>
+            {
+                ViewSessionAnswer? answer;
+                try
+                {
+                    answer = await context.Request.ReadFromJsonAsync<ViewSessionAnswer>(
+                        JsonOptions,
+                        context.RequestAborted);
+                }
+                catch (JsonException)
+                {
+                    return Results.BadRequest(new { error = "The WebRTC answer JSON is invalid." });
+                }
+                catch (InvalidOperationException)
+                {
+                    return Results.BadRequest(new { error = "The WebRTC answer must use application/json." });
+                }
+
+                if (answer is null || answer.SessionId != sessionId)
+                {
+                    return Results.BadRequest(new { error = "The WebRTC answer session identifier is invalid." });
+                }
+
+                if (!server.StorePhoneAnswer(sessionId, answer.Sdp, DateTimeOffset.UtcNow, out var error))
+                {
+                    return Results.BadRequest(new { error = error ?? "The WebRTC answer was rejected." });
+                }
+
+                return Results.Accepted(value: new { status = "AnswerReceived" });
+            }).RequireRateLimiting("view-request");
 
             await app.StartAsync(cancellationToken);
             return server;
@@ -309,6 +362,125 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
             return ClaimAcceptanceResult.Success();
         }
     }
+
+    /// <summary>
+    /// Store the offer produced by the locally approved Windows capture page.
+    /// The browser page must gather ICE before submitting the completed SDP.
+    /// </summary>
+    public bool StoreHostOfferLocally(Guid sessionId, string sdp, DateTimeOffset nowUtc, out string? error)
+    {
+        lock (_sync)
+        {
+            if (!IsKnownSessionUnderLock(sessionId))
+            {
+                error = "The view session is not authenticated.";
+                return false;
+            }
+
+            if (!_authorization.HasPermission(sessionId, SessionPermission.ViewScreen, nowUtc))
+            {
+                error = "View screen permission is not currently active.";
+                return false;
+            }
+
+            if (!IsValidSdp(sdp))
+            {
+                error = "The WebRTC offer is invalid or too large.";
+                return false;
+            }
+
+            if (_hostOfferSdp is not null)
+            {
+                error = "A WebRTC offer has already been submitted for this session.";
+                return false;
+            }
+
+            _hostOfferSdp = sdp;
+            error = null;
+            return true;
+        }
+    }
+
+    public string? GetHostOfferForPhone(Guid sessionId, DateTimeOffset nowUtc)
+    {
+        lock (_sync)
+        {
+            if (!IsKnownSessionUnderLock(sessionId) ||
+                !_authorization.HasPermission(sessionId, SessionPermission.ViewScreen, nowUtc))
+            {
+                return null;
+            }
+
+            return _hostOfferSdp;
+        }
+    }
+
+    public bool StorePhoneAnswer(Guid sessionId, string sdp, DateTimeOffset nowUtc, out string? error)
+    {
+        lock (_sync)
+        {
+            if (!IsKnownSessionUnderLock(sessionId))
+            {
+                error = "The view session is not authenticated.";
+                return false;
+            }
+
+            if (!_authorization.HasPermission(sessionId, SessionPermission.ViewScreen, nowUtc))
+            {
+                error = "View screen permission is not currently active.";
+                return false;
+            }
+
+            if (_hostOfferSdp is null)
+            {
+                error = "The Windows screen offer is not ready yet.";
+                return false;
+            }
+
+            if (!IsValidSdp(sdp))
+            {
+                error = "The WebRTC answer is invalid or too large.";
+                return false;
+            }
+
+            if (_phoneAnswerSdp is not null)
+            {
+                error = "A WebRTC answer has already been submitted for this session.";
+                return false;
+            }
+
+            _phoneAnswerSdp = sdp;
+            error = null;
+            return true;
+        }
+    }
+
+    public string? TakePhoneAnswerForHost(Guid sessionId, DateTimeOffset nowUtc)
+    {
+        lock (_sync)
+        {
+            if (!IsKnownSessionUnderLock(sessionId) ||
+                !_authorization.HasPermission(sessionId, SessionPermission.ViewScreen, nowUtc))
+            {
+                return null;
+            }
+
+            var answer = _phoneAnswerSdp;
+            _phoneAnswerSdp = null;
+            return answer;
+        }
+    }
+
+    private bool IsKnownSessionUnderLock(Guid sessionId) =>
+        _invitation?.SessionId == sessionId && _claimConsumed;
+
+    private static bool IsValidSdp(string? sdp) =>
+        !string.IsNullOrWhiteSpace(sdp) &&
+        sdp.Length <= MaximumSdpLength &&
+        sdp.StartsWith("v=0", StringComparison.Ordinal) &&
+        !sdp.Contains('\\0');
+
+    private sealed record ViewSessionAnswer(Guid SessionId, string Sdp);
 
     public async ValueTask DisposeAsync()
     {
