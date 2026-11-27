@@ -2,24 +2,28 @@
 
 ## Principles
 
-1. Explicit host consent: the person at the Windows computer controls pairing and session approval.
-2. Visible operation: the companion, capture state, active remote device, and permissions are visible.
+1. Explicit host consent: the person at the Windows computer controls pairing and each remote session.
+2. Visible operation: companion, active listener, capture state, active remote device, and permissions are visible.
 3. Least privilege: screen viewing, input control, file transfer, clipboard, diagnostics, audio, peripherals, and power actions are independently granted.
 4. Expiring trust: pairing challenges and session approvals are short-lived and revocable.
 5. Fail closed: network loss, expired grants, invalid state, or agent failure disables remote input and capture.
 6. Minimize data: do not log screen content, typed text, clipboard payloads, or file contents by default.
 
-## Pairing requirements
+## Pairing
 
-- Pairing challenge is random, single-use, short-lived, and bound to the expected host device.
-- QR codes contain no reusable account password or long-lived bearer secret.
-- The Windows user sees the requesting phone/device and approves or denies it.
-- A paired device can be removed locally.
-- New device pairing always requires fresh local approval.
+- Pairing invitation uses 256 bits of cryptographic randomness and has a bounded lifetime.
+- QR contains a one-time secret, pairing ID, HTTPS endpoint, expiry, and public-key SPKI pin.
+- Windows listener is started only after an explicit local button press.
+- Listener binds only one selected RFC1918 private IPv4 address, not all network interfaces.
+- Android validates endpoint, route, port, TLS pin, secret format, and expiry before sending.
+- Android uses an ECDSA P-256 key in Android Keystore to prove device-key possession.
+- Windows stores only approved public-device identity records using DPAPI for the current Windows user.
+- Local approval/denial/cancellation is never exposed as a network API.
+- Pairing is not permission to view or control the screen.
 
 ## Session permissions
 
-A session must explicitly state its requested permissions. The Windows user can approve a smaller subset. A session can never receive more capabilities than it requested and the local user approved.
+Each session explicitly requests capabilities. Windows user can approve a smaller subset. A remote peer cannot widen the grant.
 
 Separate capabilities:
 - View screen.
@@ -33,40 +37,38 @@ Separate capabilities:
 
 Sensitive actions may require an additional confirmation at execution time even when the capability is enabled.
 
-## Screen capture
+## Screen capture and input
 
-Use the Windows.Graphics.Capture system picker and its visible capture indication. Do not implement hidden capture or attempt to bypass the operating system's capture UI.
-
-## Input control
-
-- Enable only when the current session has the ControlInput grant.
-- Display the connected controller identity on Windows.
-- Stop input immediately when a grant is revoked or a session becomes unhealthy.
-- Do not expose arbitrary command execution through the input channel.
+- Use Windows.Graphics.Capture system picker and visible system capture indication.
+- Do not implement hidden capture or bypass the operating system's capture UI.
+- Input is enabled only with a current ControlInput grant.
+- Display connected controller identity on Windows.
+- Stop input immediately when a grant is revoked or session becomes unhealthy.
+- Do not expose arbitrary command execution through input channel.
 
 ## File access
 
-- Start with an explicit allowlist of user-selected folders.
-- Require user confirmation for delete, overwrite, move, or other destructive operations.
-- Prevent path traversal, reparse-point escape, and access outside the granted roots.
+- Start with explicit allowlist of user-selected folders.
+- Require confirmation for delete, overwrite, move, or other destructive operations.
+- Prevent path traversal and reparse-point escape.
 - Show source, destination, filename, size, and transfer progress.
 - Make cancellation available and verify transfer integrity.
 
 ## Transport and credentials
 
-- Use a standard authenticated transport (WebRTC DTLS-SRTP and DTLS data channels if WebRTC is selected).
+- Use standard authenticated transport such as WebRTC DTLS-SRTP and secure data channels if WebRTC is selected.
 - Never invent a cryptographic protocol.
-- Protect Windows secrets with Windows credential/DPAPI facilities and Android secrets with Android Keystore-backed facilities.
-- Do not store API keys, relay credentials, private keys, or local secrets in the repository.
+- Protect Windows secrets with DPAPI/Windows credential facilities and Android secrets with Android Keystore.
+- Do not store API keys, relay credentials, private keys, or secrets in repository.
 - Keep TURN credentials short-lived and scoped.
 
 ## Audit and transparency
 
-Record session creation/end, device identity, granted permission categories, approval/revocation events, file-operation metadata, and power-action confirmations. Do not record raw keystrokes, screen captures, or clipboard contents by default.
+Record session creation/end, device identity, permission categories, approval/revocation events, file-operation metadata, and power-action confirmations. Do not record raw keystrokes, screen captures, or clipboard contents by default.
 
 ## Emergency stop
 
-The Windows companion must always expose a local way to terminate the active session. Remote disconnect from the phone is also available. Termination revokes session-scoped keys and closes input, media, and data channels.
+Windows companion must always expose a local way to terminate the active session. Remote disconnect from phone is also available. Termination revokes session-scoped keys and closes input, media, and data channels.
 
 ## Threats to test
 
@@ -79,4 +81,5 @@ The Windows companion must always expose a local way to terminate the active ses
 - Malformed file paths and symlinks/reparse points.
 - Interrupted file transfers and duplicate operations.
 - Reconnect after local approval expires.
-- Local user logs out, locks the workstation, or switches Windows session.
+- Local user logs out, locks workstation, or switches Windows session.
+- Local-LAN hostile peer, certificate substitution, and stale QR reuse.

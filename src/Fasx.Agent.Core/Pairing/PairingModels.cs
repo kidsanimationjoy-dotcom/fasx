@@ -38,7 +38,8 @@ public enum PairingStatus
     AwaitingLocalApproval,
     Approved,
     Denied,
-    Expired
+    Expired,
+    Cancelled
 }
 
 public sealed record PairingClaimResult(

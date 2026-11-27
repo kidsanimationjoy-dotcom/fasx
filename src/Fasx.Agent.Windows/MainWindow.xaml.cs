@@ -6,14 +6,16 @@ namespace Fasx.Agent.Windows;
 
 public partial class MainWindow : Window
 {
+    private readonly PairingCoordinator? _pairingCoordinator;
+
     public MainWindow()
     {
         InitializeComponent();
 
         try
         {
-            var pairingCoordinator = new PairingCoordinator(new DpapiPairedDeviceStore());
-            PairedDevicesValue.Text = pairingCoordinator.GetPairedDevices().Count.ToString();
+            _pairingCoordinator = new PairingCoordinator(new DpapiPairedDeviceStore());
+            RefreshPairedDeviceCount();
         }
         catch (Exception exception)
         {
@@ -24,6 +26,29 @@ public partial class MainWindow : Window
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
             Application.Current.Shutdown();
+        }
+    }
+
+    private void PairDevices_Click(object sender, RoutedEventArgs e)
+    {
+        if (_pairingCoordinator is null)
+        {
+            return;
+        }
+
+        var pairingWindow = new PairingWindow(_pairingCoordinator)
+        {
+            Owner = this
+        };
+        pairingWindow.ShowDialog();
+        RefreshPairedDeviceCount();
+    }
+
+    private void RefreshPairedDeviceCount()
+    {
+        if (_pairingCoordinator is not null)
+        {
+            PairedDevicesValue.Text = _pairingCoordinator.GetPairedDevices().Count.ToString();
         }
     }
 }

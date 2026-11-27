@@ -1,28 +1,31 @@
 # FASX Production Roadmap
 
 ## Milestone 0 — Repository and Windows foundation
-**Status: implemented in production/foundation; CI verification pending.**
-- Product, architecture, protocol, security, and competitor baseline documented.
-- Visible Windows companion shell created.
-- Shared session permission model and tests created.
-- Protected Windows store for paired public-device identities created using DPAPI.
-- Windows CI workflow added.
+**Status: source foundation committed; CI and real-device verification pending.**
+- [x] Product, architecture, protocol, security, and competitor baseline.
+- [x] Visible Windows companion shell.
+- [x] Session permission domain model and tests.
+- [x] Protected Windows store for paired public-device identities using DPAPI.
+- [x] Windows CI workflow.
 
-## Milestone 1 — Pairing and local consent
-**Status: pairing domain + Android QR/key foundations implemented; network integration remains open.**
+## Milestone 1 — Same-LAN pairing
+**Status: implementation committed to the pairing development branch; validation pending.**
 - [x] Short-lived pairing invitation model.
 - [x] Single-use claim state machine.
-- [x] Phone device-key proof verification (P-256 ECDSA / SHA-256).
-- [x] Local-only approve/deny domain operations.
+- [x] P-256 ECDSA device proof verification.
+- [x] Local-only approve/deny/cancel operations.
 - [x] Android QR scanning and invitation validation.
 - [x] Android Keystore device signing key generation.
 - [x] Windows DPAPI persistence for trusted public device identities.
-- [x] Unit tests for proof validation, one-time use, expiry, denial, revocation and concurrent claims.
-- [ ] QR invitation creation/rendering in the Windows UI.
-- [ ] TLS-protected LAN host endpoint and certificate pin generation.
-- [ ] Android claim submission and status polling.
-- [ ] Windows pending-device approval screen.
-- [ ] End-to-end test using a real Windows host and Android phone.
+- [x] Temporary HTTPS listener bound to one RFC1918 IPv4 interface.
+- [x] QR invitation includes a certificate SPKI pin and expiry.
+- [x] Android pinned HTTPS submission and status polling.
+- [x] Windows pending-device approval UI.
+- [x] Tests for proof validation, one-time use, expiry, denial, revocation, cancellation, persistence seam, and concurrent claims.
+- [ ] CI build pass recorded for Windows and Android.
+- [ ] Real Windows + Android same-network test.
+- [ ] Windows Defender Firewall behaviour reviewed and documented.
+- [ ] Installer/package for the host and debug/release package for Android.
 
 ## Milestone 2 — First real remote session
 - WebRTC proof of concept.

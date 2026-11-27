@@ -4,7 +4,7 @@
 
 FASX is an all-in-one personal computer command centre combining secure remote desktop, device management, customizable controls, and user-approved automation.
 
-> **Project status: early foundation.** The repository now contains a Windows companion shell, testable pairing/security domain logic, protected Windows storage for trusted device public identities, and an Android Compose preview with QR scanning and device-key generation. The phone and host are not yet connected over a network.
+> **Project status: early development.** The repository contains a visible Windows companion, testable session/pairing security logic, DPAPI-protected Windows storage for trusted device identities, a temporary same-LAN HTTPS pairing service, and an Android Compose client with QR scanning and Android Keystore device identity. This is an engineering milestone, not yet a remote desktop release.
 
 ## Product vision
 
@@ -30,7 +30,7 @@ It combines three experiences:
 | Deck Gallery | Shareable SmartDeck layouts and safe workflow templates |
 | FASX Business | Managed devices, teams, and administration |
 
-## First target platforms
+## Platforms
 
 - **Host:** Windows 10/11 desktop companion.
 - **Controller:** Android phone app.
@@ -39,13 +39,13 @@ It combines three experiences:
 ## Repository layout
 
 - `src/Fasx.Agent.Core` — platform-independent session, permission, and pairing rules.
-- `src/Fasx.Agent.Windows` — visible Windows companion shell and protected device storage.
-- `apps/android` — Android Compose client foundation and QR/device identity code.
-- `services/signaling` — planned signaling/control plane.
+- `src/Fasx.Agent.Windows` — visible Windows companion, temporary LAN pairing listener, and protected device storage.
+- `apps/android` — Android Compose client, QR parser, pinned HTTPS client, and device identity.
+- `services/signaling` — planned internet signaling/control plane.
 - `tests/Fasx.Agent.Core.Tests` — tests for shared security/domain rules.
 - `docs` — product, architecture, security, protocol, pairing, research, and roadmap.
 
-## Build the Windows foundation
+## Build Windows companion
 
 Requirements: Windows, Visual Studio 2026 or the .NET 10 SDK.
 
@@ -53,11 +53,12 @@ Requirements: Windows, Visual Studio 2026 or the .NET 10 SDK.
 dotnet restore FASX.sln
 dotnet build FASX.sln -c Release
 dotnet test FASX.sln -c Release
+dotnet run --project src/Fasx.Agent.Windows/Fasx.Agent.Windows.csproj
 ```
 
-The Windows companion is currently a visible shell. It loads paired public-device identities from a DPAPI-protected store. It does not yet create QR invitations, accept network claims, share a screen, or accept remote input.
+The pairing window can start a temporary HTTPS listener only when the user selects **Pair a phone**. It binds to one private IPv4 adapter on port 47832. Pairing requests require local approval. The invitation expires and the listener closes when pairing is stopped or its window is closed.
 
-## Build the Android foundation
+## Build Android app
 
 Requirements: Android Studio with Android SDK 37, Java 17, and Gradle 9.6.
 
@@ -66,29 +67,40 @@ cd apps/android
 gradle --no-daemon :app:assembleDebug
 ```
 
-The Android app currently has a Compose SmartDeck preview, QR scanner, strict invitation parser, and a P-256 signing key stored in Android Keystore. It validates an invitation and creates a local proof but does not yet send the claim to Windows.
+The Android app scans and validates a QR invitation, asks the phone owner to confirm the displayed computer address, creates a P-256 signing key in Android Keystore, pins the temporary Windows host certificate, submits a claim over HTTPS, and polls for local approval.
 
-## Architecture direction
+## Current capabilities and limitations
+
+**Implemented in source (build and device verification pending):**
+- Local permission policy and tests.
+- Short-lived, single-use pairing invitations.
+- Device proof verification using ECDSA P-256 / SHA-256.
+- Local Windows approve/deny flow.
+- DPAPI-protected persistence of paired public-device identities.
+- Temporary same-LAN IPv4 HTTPS pairing endpoint.
+- Android QR scanner, strict invitation parsing, Android Keystore device identity, pinned HTTPS claim and status polling.
+
+**Not implemented yet:**
+- Verified CI build or signed installer.
+- Real phone-to-Windows pairing test.
+- Live screen streaming.
+- Remote keyboard/mouse input.
+- File transfer and clipboard synchronization.
+- Internet relay / remote-from-anywhere connections.
+- SmartDeck customization, Flows execution, and AI diagnostics.
+
+## Architecture and security
 
 - Windows companion: C# / .NET 10 LTS / WPF.
 - Android client: Kotlin and Jetpack Compose.
-- Control plane: ASP.NET Core for pairing, signaling, and device presence.
-- Media and low-latency input: evaluate WebRTC; use established WebRTC security rather than inventing cryptography.
-- Direct peer-to-peer connection where possible, with an authenticated TURN relay fallback.
+- Control plane: ASP.NET Core for internet signaling and device presence.
+- Candidate media transport: WebRTC, pending an end-to-end proof of concept.
+- Local pairing uses HTTPS with an invitation-bound SHA-256 SPKI pin.
+- Windows device records are protected with DPAPI for the current Windows user.
+- Android device signing keys are held in Android Keystore.
 
 Read [the architecture](docs/ARCHITECTURE.md), [security model](docs/SECURITY_MODEL.md), and [pairing flow](docs/PAIRING_FLOW.md).
 
 ## Non-negotiable safety principles
 
-- Remote access is visible to the person at the Windows computer.
-- Pairing requires deliberate local approval.
-- Each session receives only the permissions approved for that session.
-- Screen capture uses the Windows system capture picker and its visible capture indicator.
-- File access is limited to approved locations and explicit operations.
-- No hidden access, stealth persistence, credential harvesting, or arbitrary remote shell.
-- Sensitive actions such as shutdown, restart, and file deletion require clear confirmation.
-- The local user can end a session immediately.
-
-## Current milestone
-
-See [the roadmap](docs/ROADMAP.md). The next milestone is TLS-protected LAN pairing with QR generation on Windows, phone-to-host claim submission, local approval UI, and real-device tests.
+Remote access is visible and deliberately enabled by the person at the Windows computer. Pairing does not grant remote-control permissions. Every session must request only the capabilities it needs and receive local approval. No hidden access, stealth persistence, credential harvesting, arbitrary remote shell, or capture outside a clear, user-started Windows capture flow.

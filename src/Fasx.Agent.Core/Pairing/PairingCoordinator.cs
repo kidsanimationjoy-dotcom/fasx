@@ -246,6 +246,30 @@ public sealed class PairingCoordinator
         }
     }
 
+    /// <summary>Cancel an unapproved invitation from the local Windows pairing UI.</summary>
+    public bool CancelInvitationLocally(Guid pairingId)
+    {
+        lock (_sync)
+        {
+            if (!_invitations.TryGetValue(pairingId, out var invitation) ||
+                invitation.Status is not (PairingStatus.WaitingForDevice or PairingStatus.AwaitingLocalApproval))
+            {
+                return false;
+            }
+
+            invitation.Status = PairingStatus.Cancelled;
+            CryptographicOperations.ZeroMemory(invitation.SecretHash);
+
+            if (_requestByInvitation.TryGetValue(pairingId, out var requestId) &&
+                _requests.TryGetValue(requestId, out var pending))
+            {
+                pending.Status = PairingStatus.Cancelled;
+            }
+
+            return true;
+        }
+    }
+
     public PairingStatus GetStatus(Guid pairingId, DateTimeOffset nowUtc)
     {
         lock (_sync)

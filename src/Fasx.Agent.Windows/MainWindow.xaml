@@ -65,7 +65,7 @@
                 <Border Background="#202C45" CornerRadius="12" Padding="14">
                     <StackPanel>
                         <TextBlock Text="FOUNDATION BUILD" Foreground="#8FB7FF" FontSize="10" FontWeight="Bold" />
-                        <TextBlock Text="The Windows companion shell, local pairing state machine, and protected device identity storage are implemented. Network pairing and remote sessions are not enabled in this build."
+                        <TextBlock Text="FASX includes the visible Windows companion, a local approval flow, and protected paired-device storage. Remote desktop streaming and input are not yet enabled."
                                    Margin="0,6,0,0"
                                    TextWrapping="Wrap"
                                    FontSize="13" />
@@ -94,7 +94,14 @@
                     <TextBlock Text="• No hidden remote access" Margin="0,12,0,5" FontSize="13" />
                     <TextBlock Text="• Local approval required for pairing" Margin="0,0,0,5" FontSize="13" />
                     <TextBlock Text="• Permissions are granted per session" Margin="0,0,0,5" FontSize="13" />
-                    <TextBlock Text="• Local user can end an active session" Margin="0,0,0,5" FontSize="13" />
+                    <TextBlock Text="• Local user can end a session" Margin="0,0,0,5" FontSize="13" />
+                    <Button Content="Pair a phone"
+                            Click="PairDevices_Click"
+                            Margin="0,14,0,0"
+                            Padding="12,10"
+                            Background="#3978E8"
+                            Foreground="White"
+                            FontWeight="SemiBold" />
                 </StackPanel>
             </Border>
 
@@ -116,7 +123,7 @@
         </Grid>
 
         <DockPanel Grid.Row="5" Margin="2,18,2,0">
-            <TextBlock Text="FASX FOUNDATION • NETWORK PAIRING NOT YET ENABLED"
+            <TextBlock Text="FASX FOUNDATION • LAN PAIRING IS USER-STARTED"
                        Foreground="{StaticResource FasxMuted}"
                        FontSize="10"
                        VerticalAlignment="Center" />

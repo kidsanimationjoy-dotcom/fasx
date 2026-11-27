@@ -130,6 +130,23 @@ public sealed class PairingCoordinatorTests
     }
 
     [Fact]
+    public void LocalCancellationInvalidatesInvitationAndPendingRequest()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var coordinator = new PairingCoordinator();
+        using var phoneKey = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        var invitation = coordinator.CreateInvitation(now);
+        var result = coordinator.SubmitClaim(CreateClaim(invitation, phoneKey, "Phone"), now);
+
+        Assert.True(result.Accepted);
+        Assert.True(coordinator.CancelInvitationLocally(invitation.PairingId));
+        Assert.Equal(PairingStatus.Cancelled, coordinator.GetStatus(invitation.PairingId, now));
+        Assert.Empty(coordinator.GetPendingRequests(now));
+        Assert.False(coordinator.CancelInvitationLocally(invitation.PairingId));
+        Assert.Empty(coordinator.GetPairedDevices());
+    }
+
+    [Fact]
     public void ApprovedDeviceCanBeRevoked()
     {
         var now = DateTimeOffset.UtcNow;

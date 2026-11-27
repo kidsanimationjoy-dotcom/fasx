@@ -35,15 +35,22 @@ object PairingInviteParser {
         require(endpoint.scheme.equals("https", ignoreCase = true)) {
             "FASX pairing requires a secure HTTPS endpoint."
         }
-        require(!endpoint.host.isNullOrBlank() && endpoint.userInfo == null && endpoint.fragment == null) {
+        require(!endpoint.host.isNullOrBlank() &&
+            endpoint.userInfo == null &&
+            endpoint.fragment == null &&
+            endpoint.rawQuery == null &&
+            endpoint.rawPath == "/api/pairing/claim") {
             "The pairing endpoint is invalid."
         }
-        require(endpoint.port in -1..65535) { "The pairing endpoint port is invalid." }
+        require(endpoint.port == 47832) { "The pairing endpoint port is not supported." }
+        require(isPrivateIpv4(endpoint.host)) {
+            "This foundation build supports same-network private IPv4 pairing only."
+        }
 
         val tlsPin = json.getString("tlsPin")
-        require(tlsPin.startsWith("sha256/")) { "The host certificate pin is missing." }
+        require(tlsPin.startsWith("sha256/")) { "The host public-key pin is missing." }
         val pinBytes = Base64.decode(tlsPin.removePrefix("sha256/"), Base64.DEFAULT)
-        require(pinBytes.size == 32) { "The host certificate pin is invalid." }
+        require(pinBytes.size == 32) { "The host public-key pin is invalid." }
 
         val expiresAt = Instant.parse(json.getString("expiresAtUtc"))
         val now = Instant.now()
@@ -59,6 +66,22 @@ object PairingInviteParser {
             tlsPin = tlsPin,
             expiresAt = expiresAt
         )
+    }
+
+    private fun isPrivateIpv4(host: String): Boolean {
+        val parts = host.split(".")
+        if (parts.size != 4) return false
+
+        val octets = parts.map { part ->
+            if (part.isEmpty() || part.length > 3 || (part.length > 1 && part.startsWith("0"))) {
+                return false
+            }
+            part.toIntOrNull()?.takeIf { it in 0..255 } ?: return false
+        }
+
+        return octets[0] == 10 ||
+            (octets[0] == 172 && octets[1] in 16..31) ||
+            (octets[0] == 192 && octets[1] == 168)
     }
 
     private fun decodeUrlSafe(value: String): ByteArray =

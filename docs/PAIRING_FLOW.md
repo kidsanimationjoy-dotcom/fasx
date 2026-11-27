@@ -1,23 +1,33 @@
 # FASX Pairing Flow — Version 1
 
-## Status
+## Implementation status
 
-The pairing state machine, device-key proof verification, Android invitation parser, Android device-key generation, and Windows protected storage for trusted public identities are implemented. The host/phone network exchange, QR invitation generation on Windows, and a real end-to-end pairing test are not implemented yet.
+The repository contains a first same-LAN pairing implementation. It includes a local Windows WPF pairing screen, short-lived invitations, a temporary HTTPS Kestrel listener, a QR invitation with an SPKI pin, Android QR validation, Android Keystore device signing, host-side ECDSA verification, Windows-local approve/deny/cancel, and DPAPI-protected storage for approved public device identities.
 
-## Intended flow
+This is still an engineering milestone. The build and a real Windows/Android same-network test must pass before the pairing feature is considered release-ready.
 
-1. The user opens the visible FASX Windows companion and chooses **Pair a device**.
-2. FASX creates a random 256-bit secret and a pairing invitation that expires after two minutes (bounded to 30 seconds–5 minutes).
-3. The Android app creates a P-256 ECDSA device key pair. The private key stays in Android Keystore.
-4. The phone scans the invitation and submits its device ID, display name, public key, a random 256-bit nonce, and a signature.
-5. FASX verifies the signature and the invitation secret. The invitation is consumed by the first valid claim.
-6. The Windows companion shows the device name and ID and asks the local user to approve or deny.
-7. Approval stores the public device identity using Windows DPAPI for the current Windows user; denial ends the request.
-8. Future sessions still require separate per-session permission approval. Pairing is not permission to control the computer.
+## Host flow
+
+1. The user opens the visible FASX Windows companion and selects **Pair a phone**.
+2. The user clicks **Enable local pairing**.
+3. FASX selects one active RFC1918 private IPv4 address and starts a temporary HTTPS listener on that address at port 47832.
+4. A self-signed host certificate is created for that address. The QR includes its SPKI SHA-256 pin.
+5. FASX creates a random 256-bit invitation secret with a two-minute expiry.
+6. The Windows UI displays the QR and the address/expiry.
+7. The user can approve or deny each phone request.
+8. Creating a new QR cancels the previous unapproved invitation. Stopping or closing the pairing window cancels the current invitation and closes the listener.
+
+## Phone flow
+
+1. Android scans the QR with Google Code Scanner.
+2. The parser verifies version, invitation type, secret size, private IPv4 address, HTTPS scheme, claim route, fixed port, SPKI pin size, and expiry.
+3. The app displays the computer's IP address and waits for the phone owner to confirm.
+4. Android generates or loads its P-256 signing key from Android Keystore.
+5. The app creates a random 256-bit proof nonce and signs the canonical pairing proof.
+6. It submits the claim through HTTPS using the SPKI pin from the QR.
+7. It polls the read-only status route until the Windows user approves, denies, cancels, or the invitation expires.
 
 ## QR payload
-
-The future QR JSON envelope is:
 
 ```json
 {
@@ -25,15 +35,15 @@ The future QR JSON envelope is:
   "kind": "fasx-pair",
   "pairingId": "uuid",
   "secret": "base64url-256-bit-secret",
-  "endpoint": "https://host.example:port/api/pairing/claim",
-  "tlsPin": "sha256/base64-sha256-certificate-pin",
-  "expiresAtUtc": "2026-11-27T12:00:00.0000000Z"
+  "endpoint": "https://192.168.1.10:47832/api/pairing/claim",
+  "tlsPin": "sha256/base64-sha256-SPKI-pin",
+  "expiresAtUtc": "UTC ISO-8601 timestamp"
 }
 ```
 
-The Android parser accepts HTTPS endpoints only, validates the certificate pin shape, checks the invitation expiry, and rejects unsupported QR formats.
+Only private RFC1918 IPv4 addresses are accepted in this milestone. Internet endpoints, hostnames, HTTP, alternate ports, query strings, and fragments are rejected.
 
-## Proof message
+## Device proof
 
 The phone signs UTF-8 bytes of the exact newline-separated string:
 
@@ -48,15 +58,35 @@ Use ECDSA P-256 with SHA-256 and RFC 3279 DER sequence signature encoding.
 
 The public key is SubjectPublicKeyInfo DER encoded, then Base64URL encoded. The nonce is 32 cryptographically random bytes encoded as Base64URL.
 
+## Network routes
+
+- `POST /api/pairing/claim` — accepts a signed device claim; fixed-window rate limit.
+- `GET /api/pairing/status/{pairingId}` — returns invitation state only; a separate higher polling limit.
+- Local approve, deny, cancel, and paired-device revocation are in-process Windows operations and are not HTTP routes.
+
+The HTTPS listener binds to one selected private IPv4 interface, not all interfaces. It closes when the user stops pairing or closes the pairing window. Response caching is disabled.
+
+## Persistence
+
+- Pairing invitations and pending claims are process-memory only and disappear when the pairing process exits.
+- Approved device public identities are stored in the current user's Windows LocalAppData and encrypted with DPAPI.
+- Android device signing private key remains in Android Keystore.
+- Android stores a local device identifier; no private signing key is exported.
+
 ## Security boundaries
 
-- The 256-bit invitation secret is returned only when the host creates the invitation; persist only its SHA-256 hash.
-- Device signature proves key possession. It does not prove that a displayed device name is genuine.
-- Host approval is a separate local operation. A phone/network endpoint must never call the local approval method.
-- Pairing expires. Rejected, expired, or consumed invitations cannot be reused.
+- Invitation secret is 256 bits, one-time, short-lived, and stored on Windows only as a SHA-256 hash.
+- TLS uses a temporary server certificate; the Android client checks the SPKI pin from the QR and retains hostname verification.
+- Device signature proves key possession. It does not authenticate the human-readable device name.
+- Host approval is a separate local operation. A phone/network endpoint cannot call the local approval method.
 - Pairing does not grant screen, keyboard, file, clipboard, or power capabilities.
-- A future network implementation must use authenticated TLS, protect the Android private key in Keystore, persist host state securely, rate-limit failed claims, and include certificate/pinning or another trustworthy host-identity check for direct LAN pairing.
+- No screen-capture or remote-input endpoint is present in the pairing server.
+- Claim endpoint and status endpoint have separate rate limits; requests have a size cap.
 
-## Current implementation limitation
+## Remaining validation and limitations
 
-Pairing invitations and pending claims are currently process-memory only. Trusted paired public-device identities are persisted using Windows DPAPI for the current Windows user. The code is useful for validating the pairing flow, but not yet a complete network pairing implementation. QR generation on Windows, TLS-protected LAN transport, Android claim submission, and end-to-end tests are still required.
+- Windows and Android CI build results must be recorded.
+- Test with a Windows host and Android phone on the same trusted Wi-Fi network.
+- Verify Windows Defender Firewall prompt/allow behaviour without silently changing firewall settings.
+- Test failed TLS pin, expired certificate, expired invitation, replay, wrong signature, duplicate claim, host cancellation, and restart.
+- Public internet access, relay infrastructure, remote screen streaming, remote input, audio, and File Bridge are not part of this milestone.
