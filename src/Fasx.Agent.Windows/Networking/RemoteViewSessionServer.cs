@@ -538,7 +538,7 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
         !string.IsNullOrWhiteSpace(sdp) &&
         sdp.Length <= MaximumSdpLength &&
         sdp.StartsWith("v=0", StringComparison.Ordinal) &&
-        !sdp.Contains('\\0');
+        sdp.IndexOf(char.MinValue) < 0;
 
     private sealed record ViewSessionAnswer(Guid SessionId, string Secret, string Sdp);
 
