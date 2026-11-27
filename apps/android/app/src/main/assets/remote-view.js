@@ -59,9 +59,17 @@
       connection.onconnectionstatechange = () => {
         const state = connection.connectionState;
         if (state === "connected") report("Connected. View-only screen stream is active.");
-        else if (state === "disconnected") report("Screen connection interrupted.");
-        else if (state === "failed") report("Screen connection failed. Stop the session and try again.");
-        else if (state === "closed") report("Screen connection closed.");
+        else if (state === "disconnected" || state === "failed" || state === "closed") {
+          video.srcObject = null;
+          report(
+            state === "disconnected"
+              ? "Screen connection interrupted. The Windows sender may be stopping."
+              : "Screen connection closed. View-only video has stopped."
+          );
+          connection.ontrack = null;
+          connection.close();
+          if (peer === connection) peer = null;
+        }
       };
 
       connection.oniceconnectionstatechange = () => {
