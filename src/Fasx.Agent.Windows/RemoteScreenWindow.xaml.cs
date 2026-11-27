@@ -166,10 +166,10 @@ public partial class RemoteScreenWindow : Window
                         var state = stateElement.GetString() ?? string.Empty;
                         SetStatus("Phone connection: " + state);
 
-                        if (state is "failed" or "closed")
+                        if (state is "disconnected" or "failed" or "closed")
                         {
-                            _authorization.RevokeLocally(_sessionId);
-                            _answerTimer.Stop();
+                            SetStatus("Phone disconnected. Stopping capture and revoking View screen.");
+                            StopSessionAndClose();
                         }
                     }
                     break;
