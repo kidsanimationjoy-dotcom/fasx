@@ -1,5 +1,4 @@
 using System.Security.Cryptography;
-using System.Text;
 
 namespace Fasx.Agent.Core.Pairing;
 
@@ -234,7 +233,7 @@ public sealed class PairingCoordinator
 
     private static bool RefreshExpiry(PendingPairing pairing, DateTimeOffset nowUtc)
     {
-        if (pairing.Status is PairingStatus.Pending or PairingStatus.AwaitingHostApproval &&
+        if ((pairing.Status is PairingStatus.Pending or PairingStatus.AwaitingHostApproval) &&
             pairing.ExpiresAtUtc <= nowUtc.ToUniversalTime())
         {
             pairing.Status = PairingStatus.Expired;
