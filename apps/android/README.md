@@ -9,7 +9,7 @@
 - Google Play services Code Scanner 16.1.0
 - OkHttp 4.12.0
 - Java 17
-- Android SDK 37
+- Android SDK 37.2 (API level 37)
 - Minimum Android API 26
 
 ## Build
