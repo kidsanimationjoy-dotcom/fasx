@@ -187,6 +187,23 @@ public sealed class SessionAuthorizationCoordinator
         }
     }
 
+    /// <summary>Stop a pending or approved session from the local Windows UI.</summary>
+    public bool CancelLocally(Guid sessionId)
+    {
+        lock (_sync)
+        {
+            if (!_sessions.TryGetValue(sessionId, out var record) ||
+                record.Status is not (SessionStatus.AwaitingLocalApproval or SessionStatus.Approved))
+            {
+                return false;
+            }
+
+            record.Status = SessionStatus.Cancelled;
+            record.Approval = null;
+            return true;
+        }
+    }
+
     public SessionApproval? GetActiveApproval(Guid sessionId, DateTimeOffset nowUtc)
     {
         lock (_sync)
@@ -269,5 +286,6 @@ public enum SessionStatus
     Approved,
     Denied,
     Expired,
-    Revoked
+    Revoked,
+    Cancelled
 }
