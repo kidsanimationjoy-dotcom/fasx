@@ -1,22 +1,28 @@
 # FASX Production Roadmap
 
 ## Milestone 0 — Repository and Windows foundation
-**Status: committed to production/foundation; automated build validation pending.**
-- Product and technical baseline documented.
-- Windows companion WPF shell created.
-- Shared session permission model created.
-- Unit tests for permission boundaries added.
+**Status: implemented in production/foundation; CI verification pending.**
+- Product, architecture, protocol, security, and competitor baseline documented.
+- Visible Windows companion shell created.
+- Shared session permission model and tests created.
+- Protected Windows store for paired public-device identities created using DPAPI.
 - Windows CI workflow added.
 
-The current Windows shell is a visible foundation screen only. It does not yet pair devices, stream a screen, transfer files, or accept remote input.
-
 ## Milestone 1 — Pairing and local consent
-- Device identity and secure local storage.
-- Short-lived single-use QR pairing.
-- Local host approval screen.
-- Paired-device list and revoke action.
-- Session permission chooser.
-- Audit events for pairing and approval.
+**Status: pairing domain + Android QR/key foundations implemented; network integration remains open.**
+- [x] Short-lived pairing invitation model.
+- [x] Single-use claim state machine.
+- [x] Phone device-key proof verification (P-256 ECDSA / SHA-256).
+- [x] Local-only approve/deny domain operations.
+- [x] Android QR scanning and invitation validation.
+- [x] Android Keystore device signing key generation.
+- [x] Windows DPAPI persistence for trusted public device identities.
+- [x] Unit tests for proof validation, one-time use, expiry, denial, revocation and concurrent claims.
+- [ ] QR invitation creation/rendering in the Windows UI.
+- [ ] TLS-protected LAN host endpoint and certificate pin generation.
+- [ ] Android claim submission and status polling.
+- [ ] Windows pending-device approval screen.
+- [ ] End-to-end test using a real Windows host and Android phone.
 
 ## Milestone 2 — First real remote session
 - WebRTC proof of concept.

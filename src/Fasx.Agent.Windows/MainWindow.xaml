@@ -65,7 +65,7 @@
                 <Border Background="#202C45" CornerRadius="12" Padding="14">
                     <StackPanel>
                         <TextBlock Text="FOUNDATION BUILD" Foreground="#8FB7FF" FontSize="10" FontWeight="Bold" />
-                        <TextBlock Text="The desktop shell and permission model are in place. Pairing, streaming, and remote input are not enabled in this build."
+                        <TextBlock Text="The Windows companion shell, local pairing state machine, and protected device identity storage are implemented. Network pairing and remote sessions are not enabled in this build."
                                    Margin="0,6,0,0"
                                    TextWrapping="Wrap"
                                    FontSize="13" />
@@ -109,12 +109,14 @@
                     <TextBlock Text="Local device diagnostics" Foreground="{StaticResource FasxMuted}" FontSize="12" />
                     <TextBlock Text="Security Shield" FontSize="16" FontWeight="SemiBold" Margin="0,16,0,3" />
                     <TextBlock Text="Pairing and session permissions" Foreground="{StaticResource FasxMuted}" FontSize="12" />
+                    <TextBlock Text="Paired devices" FontSize="13" FontWeight="SemiBold" Margin="0,12,0,2" />
+                    <TextBlock x:Name="PairedDevicesValue" Text="0" FontSize="24" FontWeight="Bold" Foreground="#8FB7FF" />
                 </StackPanel>
             </Border>
         </Grid>
 
         <DockPanel Grid.Row="5" Margin="2,18,2,0">
-            <TextBlock Text="FASX FOUNDATION • REMOTE FEATURES NOT YET ENABLED"
+            <TextBlock Text="FASX FOUNDATION • NETWORK PAIRING NOT YET ENABLED"
                        Foreground="{StaticResource FasxMuted}"
                        FontSize="10"
                        VerticalAlignment="Center" />

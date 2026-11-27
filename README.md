@@ -4,7 +4,7 @@
 
 FASX is an all-in-one personal computer command centre combining secure remote desktop, device management, customizable controls, and user-approved automation.
 
-> **Project status: Foundation / early development.** The current build contains the initial Windows companion shell and permission-domain model. Remote streaming, pairing, file transfer, and phone connectivity are not implemented yet.
+> **Project status: early foundation.** The repository now contains a Windows companion shell, testable pairing/security domain logic, protected Windows storage for trusted device public identities, and an Android Compose preview with QR scanning and device-key generation. The phone and host are not yet connected over a network.
 
 ## Product vision
 
@@ -30,20 +30,20 @@ It combines three experiences:
 | Deck Gallery | Shareable SmartDeck layouts and safe workflow templates |
 | FASX Business | Managed devices, teams, and administration |
 
-## First target platform
+## First target platforms
 
 - **Host:** Windows 10/11 desktop companion.
-- **Controller:** Android phone client.
-- **Future:** Additional desktop and mobile platforms after the Windows/Android experience is stable.
+- **Controller:** Android phone app.
+- **Future:** Additional desktop and mobile platforms after Windows/Android stability.
 
 ## Repository layout
 
-- `src/Fasx.Agent.Core` — platform-independent session and permission rules.
-- `src/Fasx.Agent.Windows` — visible Windows companion shell.
-- `apps/android` — Android client plan and implementation entry point.
-- `services/signaling` — signaling/control-plane plan.
+- `src/Fasx.Agent.Core` — platform-independent session, permission, and pairing rules.
+- `src/Fasx.Agent.Windows` — visible Windows companion shell and protected device storage.
+- `apps/android` — Android Compose client foundation and QR/device identity code.
+- `services/signaling` — planned signaling/control plane.
 - `tests/Fasx.Agent.Core.Tests` — tests for shared security/domain rules.
-- `docs` — product, architecture, security, protocol, research, and roadmap.
+- `docs` — product, architecture, security, protocol, pairing, research, and roadmap.
 
 ## Build the Windows foundation
 
@@ -55,18 +55,28 @@ dotnet build FASX.sln -c Release
 dotnet test FASX.sln -c Release
 ```
 
-The current companion is an early visible shell. It does not yet establish remote connections or capture/control the desktop.
+The Windows companion is currently a visible shell. It loads paired public-device identities from a DPAPI-protected store. It does not yet create QR invitations, accept network claims, share a screen, or accept remote input.
+
+## Build the Android foundation
+
+Requirements: Android Studio with Android SDK 37, Java 17, and Gradle 9.6.
+
+```bash
+cd apps/android
+gradle --no-daemon :app:assembleDebug
+```
+
+The Android app currently has a Compose SmartDeck preview, QR scanner, strict invitation parser, and a P-256 signing key stored in Android Keystore. It validates an invitation and creates a local proof but does not yet send the claim to Windows.
 
 ## Architecture direction
 
-- Windows companion: C# / .NET 10 LTS / WPF for the first desktop shell.
+- Windows companion: C# / .NET 10 LTS / WPF.
 - Android client: Kotlin and Jetpack Compose.
 - Control plane: ASP.NET Core for pairing, signaling, and device presence.
 - Media and low-latency input: evaluate WebRTC; use established WebRTC security rather than inventing cryptography.
 - Direct peer-to-peer connection where possible, with an authenticated TURN relay fallback.
-- Shared contracts and permission rules live in `Fasx.Agent.Core` initially and will be extracted into a versioned protocol package when the mobile client is added.
 
-The selected stack and trade-offs are recorded in [ADR 0001](docs/decisions/0001-platform-foundation.md).
+Read [the architecture](docs/ARCHITECTURE.md), [security model](docs/SECURITY_MODEL.md), and [pairing flow](docs/PAIRING_FLOW.md).
 
 ## Non-negotiable safety principles
 
@@ -79,8 +89,6 @@ The selected stack and trade-offs are recorded in [ADR 0001](docs/decisions/0001
 - Sensitive actions such as shutdown, restart, and file deletion require clear confirmation.
 - The local user can end a session immediately.
 
-Read [the security model](docs/SECURITY_MODEL.md) before implementing any remote-control capability.
-
 ## Current milestone
 
-See [the roadmap](docs/ROADMAP.md). The first milestone is the visible Windows companion, testable permission rules, and the development pipeline. Pairing and real screen streaming are subsequent milestones and must not be represented as working until tested end-to-end.
+See [the roadmap](docs/ROADMAP.md). The next milestone is TLS-protected LAN pairing with QR generation on Windows, phone-to-host claim submission, local approval UI, and real-device tests.
