@@ -75,3 +75,29 @@ Record the result without sharing private network details publicly:
 | Denial and expiry are handled | Pass / Fail / Not tested |
 
 Do not include public IP addresses, device serial numbers, Wi-Fi passwords, private keys, or pairing QR codes in an issue or public post.
+
+
+## View-only session and screen-stream test
+
+These checks are for a development build only and must be run on devices you own, on a trusted private home network.
+
+1. Pair the phone first using **Pair a phone**.
+2. On Windows choose **Request view-only session** and select the paired phone.
+3. Scan the new **fasx-view** QR in the Android app and confirm the Windows IP shown in the phone dialog.
+4. Confirm that the Windows app shows the request from the selected paired phone.
+5. Before approving, verify that the phone cannot retrieve a WebRTC offer or see the screen.
+6. On Windows approve **View screen** only.
+7. On Windows press **Start screen sharing** and select a single application window in the system picker.
+8. Confirm that the phone displays that video and that Windows visibly shows the capture indicator.
+9. Press **Stop session** on Windows. Verify the phone viewer disconnects and the permission is revoked.
+10. Repeat and stop viewing from the phone. Verify the Windows side stops sharing when the peer disconnects.
+
+Negative checks:
+
+- Request a view session from a phone other than the paired device selected on Windows; the request must be rejected.
+- Change the session token or device signature; the request or offer/answer call must fail.
+- Let the session request or approval lease expire; the screen stream must stop.
+- Disconnect the phone from Wi-Fi or close the viewer; the Windows sender must stop capture and revoke View screen.
+- Verify there is no keyboard, pointer, audio, clipboard, or file-transfer channel in this build.
+
+This view-only source implementation is not yet confirmed on the target Windows/Android hardware. Do not disable firewalls, SmartScreen, Defender, or Play Protect for the test.
