@@ -1,0 +1,32 @@
+# .NET
+**/bin/
+**/obj/
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Android / Gradle
+.gradle/
+**/build/
+local.properties
+.cxx/
+.externalNativeBuild/
+
+# IDEs
+.idea/
+.vscode/
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.pfx
+*.p12
+*.key
+secrets.json
+
+# OS
+.DS_Store
+Thumbs.db

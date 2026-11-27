@@ -1,0 +1,35 @@
+name: Windows build
+
+on:
+  push:
+    branches:
+      - main
+      - "production/**"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: dotnet restore FASX.sln
+
+      - name: Build
+        run: dotnet build FASX.sln --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test FASX.sln --configuration Release --no-build
