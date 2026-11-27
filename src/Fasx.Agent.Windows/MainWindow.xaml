@@ -109,6 +109,13 @@
                             Background="#263A5C"
                             Foreground="White"
                             FontWeight="SemiBold" />
+                    <Button Content="Request view-only session"
+                            Click="ViewSession_Click"
+                            Margin="0,8,0,0"
+                            Padding="12,10"
+                            Background="#277A55"
+                            Foreground="White"
+                            FontWeight="SemiBold" />
                 </StackPanel>
             </Border>
 
