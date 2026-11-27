@@ -47,7 +47,7 @@ It combines three experiences:
 
 ## Build Windows companion
 
-Requirements: Windows, Visual Studio 2026 or the .NET 10 SDK.
+Requirements: Windows 10/11, Visual Studio 2026 or the .NET 10 SDK, and the Microsoft Edge WebView2 Runtime for the local screen preview.
 
 ```powershell
 dotnet restore FASX.sln
@@ -79,11 +79,12 @@ The Android app scans and validates a QR invitation, asks the phone owner to con
 - DPAPI-protected persistence of paired public-device identities.
 - Temporary same-LAN IPv4 HTTPS pairing endpoint.
 - Android QR scanner, strict invitation parsing, Android Keystore device identity, pinned HTTPS claim and status polling.
+- Local Windows screen-capture preview using WebView2 and the Windows-owned display/window picker.
 
 **Not implemented yet:**
 - Verified CI build or signed installer.
 - Real phone-to-Windows pairing test.
-- Live screen streaming.
+- Live screen streaming from Windows to the phone (the current screen feature is local preview only).
 - Remote keyboard/mouse input.
 - File transfer and clipboard synchronization.
 - Internet relay / remote-from-anywhere connections.
@@ -99,7 +100,7 @@ The Android app scans and validates a QR invitation, asks the phone owner to con
 - Windows device records are protected with DPAPI for the current Windows user.
 - Android device signing keys are held in Android Keystore.
 
-Read [the architecture](docs/ARCHITECTURE.md), [security model](docs/SECURITY_MODEL.md), and [pairing flow](docs/PAIRING_FLOW.md).
+Read [the architecture](docs/ARCHITECTURE.md), [security model](docs/SECURITY_MODEL.md), [pairing flow](docs/PAIRING_FLOW.md), and [remote screen design](docs/REMOTE_SCREEN_DESIGN.md).
 
 ## Non-negotiable safety principles
 
