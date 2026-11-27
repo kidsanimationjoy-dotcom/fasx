@@ -1,3 +1,4 @@
+using System.IO;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Fasx.Agent.Core.Pairing;
