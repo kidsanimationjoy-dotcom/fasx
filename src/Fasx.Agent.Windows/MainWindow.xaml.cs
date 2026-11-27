@@ -44,6 +44,15 @@ public partial class MainWindow : Window
         RefreshPairedDeviceCount();
     }
 
+    private void PreviewScreen_Click(object sender, RoutedEventArgs e)
+    {
+        var previewWindow = new ScreenPreviewWindow
+        {
+            Owner = this
+        };
+        previewWindow.ShowDialog();
+    }
+
     private void RefreshPairedDeviceCount()
     {
         if (_pairingCoordinator is not null)
