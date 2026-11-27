@@ -138,7 +138,7 @@ public partial class ViewSessionWindow : Window
                 ApprovalButtons.Visibility = Visibility.Collapsed;
                 StartStreamButton.Visibility = Visibility.Visible;
                 SessionStatusText.Text = "View screen permission approved.";
-                ApprovalDescriptionText.Text = "The phone is authorized for View screen for up to 10 minutes. Live video transport is the next connection step; no screen frames are being sent yet.";
+                ApprovalDescriptionText.Text = "View screen is authorized for 10 minutes. Click Start screen sharing to choose what the phone can see.";
                 break;
 
             case SessionStatus.Denied:
