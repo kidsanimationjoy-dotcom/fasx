@@ -48,6 +48,7 @@ class MainActivity : ComponentActivity() {
     private val networkExecutor = Executors.newSingleThreadExecutor()
     private var uiStatus by mutableStateOf("No computer paired.")
     private var pendingInvite by mutableStateOf<PairingInvite?>(null)
+    private var pendingViewInvite by mutableStateOf<ViewSessionInvite?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,12 +57,20 @@ class MainActivity : ComponentActivity() {
                 FasxHome(
                     statusText = uiStatus,
                     pendingInvite = pendingInvite,
+                    pendingViewInvite = pendingViewInvite,
                     onScanInvitation = { scanInvitation() },
                     onConfirmPairing = { invite ->
                         pendingInvite = null
                         submitPairingClaim(invite)
                     },
-                    onCancelPairing = { pendingInvite = null }
+                    onConfirmViewSession = { invite ->
+                        pendingViewInvite = null
+                        submitViewSessionRequest(invite)
+                    },
+                    onCancelPairing = {
+                        pendingInvite = null
+                        pendingViewInvite = null
+                    }
                 )
             }
         }
@@ -72,14 +81,26 @@ class MainActivity : ComponentActivity() {
             .startScan()
             .addOnSuccessListener { barcode ->
                 runCatching {
-                    PairingInviteParser.parse(
-                        barcode.rawValue ?: error("The QR code is empty.")
-                    )
-                }.onSuccess { invite ->
-                    pendingInvite = invite
-                    uiStatus = "Invitation scanned. Review the computer address before continuing."
+                    barcode.rawValue ?: error("The QR code is empty.")
+                }.onSuccess { rawValue ->
+                    runCatching {
+                        when (JSONObject(rawValue).optString("kind")) {
+                            "fasx-pair" -> {
+                                pendingInvite = PairingInviteParser.parse(rawValue)
+                                uiStatus = "Pairing invitation scanned. Review the computer address."
+                            }
+                            "fasx-view" -> {
+                                pendingViewInvite = ViewSessionInviteParser.parse(rawValue)
+                                uiStatus = "View-session request scanned. Review the computer address."
+                            }
+                            else -> error("This QR code is not a supported FASX invitation.")
+                        }
+                    }.onFailure { error ->
+                        uiStatus = "Invitation not accepted: " + (error.message ?: "Invalid QR code.")
+                        Toast.makeText(this, uiStatus, Toast.LENGTH_LONG).show()
+                    }
                 }.onFailure { error ->
-                    uiStatus = "Invitation not accepted: " + (error.message ?: "Invalid QR code.")
+                    uiStatus = "FASX could not read the QR code: " + (error.message ?: "Unknown error")
                     Toast.makeText(this, uiStatus, Toast.LENGTH_LONG).show()
                 }
             }
@@ -179,6 +200,102 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun submitViewSessionRequest(invite: ViewSessionInvite) {
+        uiStatus = "Authenticating this phone with " + invite.endpoint.host + "..."
+        networkExecutor.execute {
+            try {
+                check(Instant.now().isBefore(invite.expiresAt)) {
+                    "This view-session invitation has expired."
+                }
+
+                val proof = DeviceIdentity.createSessionProof(this, invite.sessionId, invite.nonce)
+                val client: OkHttpClient = PinnedHttpClient.create(
+                    PairingInvite(
+                        pairingId = invite.sessionId,
+                        secret = invite.secret,
+                        endpoint = invite.endpoint,
+                        tlsPin = invite.tlsPin,
+                        expiresAt = invite.expiresAt
+                    )
+                )
+                val requestJson = JSONObject()
+                    .put("sessionId", proof.sessionId)
+                    .put("deviceId", proof.deviceId)
+                    .put("secret", invite.secret)
+                    .put("nonce", proof.nonce)
+                    .put("signature", proof.signature)
+
+                val request = Request.Builder()
+                    .url(invite.endpoint.toString())
+                    .post(
+                        requestJson.toString().toRequestBody(
+                            "application/json; charset=utf-8".toMediaType()
+                        )
+                    )
+                    .build()
+
+                client.newCall(request).execute().use { response ->
+                    if (response.code != 202) {
+                        val body = response.body?.string().orEmpty()
+                        val message = runCatching {
+                            JSONObject(body).optString("error")
+                        }.getOrNull().orEmpty()
+                        throw IllegalStateException(
+                            message.ifBlank {
+                                "The Windows computer rejected the session request (HTTP ${response.code})."
+                            }
+                        )
+                    }
+                }
+
+                updateUiStatus("View-only request sent. Approve View screen on the Windows computer.")
+                val statusUrl = invite.endpoint.resolve(
+                    "/api/view/status/${invite.sessionId}"
+                ).toString()
+
+                while (Instant.now().isBefore(invite.expiresAt.plusSeconds(600))) {
+                    val statusRequest = Request.Builder().url(statusUrl).get().build()
+                    val status = client.newCall(statusRequest).execute().use { response ->
+                        if (!response.isSuccessful) {
+                            throw IllegalStateException(
+                                "Could not read view-session status (HTTP ${response.code})."
+                            )
+                        }
+                        JSONObject(response.body?.string().orEmpty()).optString("status")
+                    }
+
+                    when (status) {
+                        "AwaitingLocalApproval" ->
+                            updateUiStatus("Waiting for the Windows user to approve View screen only.")
+                        "Approved" -> {
+                            updateUiStatus("View-only session authorized. Screen streaming is the next connection step.")
+                            return@execute
+                        }
+                        "Denied" -> {
+                            updateUiStatus("The Windows user denied the view-session request.")
+                            return@execute
+                        }
+                        "Revoked", "Cancelled" -> {
+                            updateUiStatus("The view-session authorization was stopped on Windows.")
+                            return@execute
+                        }
+                        "Expired" -> {
+                            updateUiStatus("The view-session request expired. Scan a new invitation.")
+                            return@execute
+                        }
+                        "NotFound" ->
+                            throw IllegalStateException("The view-session invitation is no longer available.")
+                    }
+                    Thread.sleep(1000)
+                }
+
+                updateUiStatus("The view-session approval window timed out.")
+            } catch (error: Exception) {
+                updateUiStatus("View-session request failed: " + (error.message ?: "Unknown error"))
+            }
+        }
+    }
+
     private fun updateUiStatus(message: String) {
         runOnUiThread { uiStatus = message }
     }
@@ -208,8 +325,10 @@ private data class DeckModule(val title: String, val description: String)
 private fun FasxHome(
     statusText: String,
     pendingInvite: PairingInvite?,
+    pendingViewInvite: ViewSessionInvite?,
     onScanInvitation: () -> Unit,
     onConfirmPairing: (PairingInvite) -> Unit,
+    onConfirmViewSession: (ViewSessionInvite) -> Unit,
     onCancelPairing: () -> Unit
 ) {
     val modules = listOf(
@@ -235,6 +354,30 @@ private fun FasxHome(
             confirmButton = {
                 TextButton(onClick = { onConfirmPairing(pendingInvite) }) {
                     Text("Send pairing request")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onCancelPairing) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (pendingViewInvite != null) {
+        AlertDialog(
+            onDismissRequest = onCancelPairing,
+            title = { Text("Request view-only access") },
+            text = {
+                Text(
+                    "This will send a signed View screen request to " +
+                        pendingViewInvite.endpoint.host + ":" + pendingViewInvite.endpoint.port +
+                        ". The computer owner must approve it locally. This request does not ask for mouse, keyboard, files or clipboard access."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { onConfirmViewSession(pendingViewInvite) }) {
+                    Text("Send view-only request")
                 }
             },
             dismissButton = {
