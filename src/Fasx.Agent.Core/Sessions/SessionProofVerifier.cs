@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using Fasx.Agent.Core.Pairing;
 
 namespace Fasx.Agent.Core.Sessions;
 
@@ -45,7 +46,7 @@ public static class SessionProofVerifier
             proof.SessionId == Guid.Empty ||
             proof.Nonce.Length is 0 or > 128 ||
             proof.Signature.Length is 0 or > 256 ||
-            !Pairing.Base64Url.TryDecode(proof.Nonce, out var nonceBytes) ||
+            !Base64Url.TryDecode(proof.Nonce, out var nonceBytes) ||
             nonceBytes.Length != 32 ||
             !Pairing.Base64Url.TryDecode(proof.Signature, out var signatureBytes) ||
             !Pairing.Base64Url.TryDecode(pairedDevice.PublicKeySpki, out var publicKeyBytes))
