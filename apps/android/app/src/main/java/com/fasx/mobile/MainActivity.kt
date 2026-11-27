@@ -2,7 +2,6 @@ package com.fasx.mobile
 
 import android.os.Bundle
 import android.webkit.JavascriptInterface
-import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
@@ -571,7 +570,6 @@ private fun FasxHome(
                                 WebView(context).apply {
                                     settings.javaScriptEnabled = true
                                     settings.domStorageEnabled = false
-                                    webChromeClient = WebChromeClient()
                                     val state = RemoteViewWebState()
                                     tag = state
 
@@ -593,8 +591,8 @@ private fun FasxHome(
                                             request: android.webkit.WebResourceRequest
                                         ): Boolean {
                                             val requested = request.url.toString()
-                                            return !requested.startsWith(
-                                                "file:///android_asset/",
+                                            return !requested.equals(
+                                                "file:///android_asset/remote-view.html",
                                                 ignoreCase = true
                                             )
                                         }
