@@ -9,7 +9,7 @@
         WindowStartupLocation="CenterOwner"
         Background="#0B1020"
         Foreground="#F4F7FF"
-        Closed="Window_Closed">
+>
     <Grid Margin="24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
