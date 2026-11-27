@@ -270,7 +270,11 @@ class MainActivity : ComponentActivity() {
                 ).toString()
 
                 while (Instant.now().isBefore(invite.expiresAt.plusSeconds(600))) {
-                    val statusRequest = Request.Builder().url(statusUrl).get().build()
+                    val statusRequest = Request.Builder()
+                        .url(statusUrl)
+                        .header("X-FASX-Session-Token", invite.secret)
+                        .get()
+                        .build()
                     val status = client.newCall(statusRequest).execute().use { response ->
                         if (!response.isSuccessful) {
                             throw IllegalStateException(
