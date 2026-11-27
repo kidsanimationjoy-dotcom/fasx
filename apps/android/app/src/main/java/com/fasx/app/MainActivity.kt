@@ -29,7 +29,6 @@ import androidx.compose.material.icons.outlined.Monitor
 import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.TouchApp
-import androidx.compose.material.icons.outlined.Workflow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -265,7 +264,7 @@ private fun HomeDashboard(onModuleClick: (String) -> Unit) {
     )
     ModuleRow(
         ModuleInfo("Quick Actions", "Your shortcuts", Icons.Outlined.Bolt),
-        ModuleInfo("FASX Flows", "Approved workflows", Icons.Outlined.Workflow),
+        ModuleInfo("FASX Flows", "Approved workflows", Icons.Outlined.Bolt),
         onModuleClick
     )
 
