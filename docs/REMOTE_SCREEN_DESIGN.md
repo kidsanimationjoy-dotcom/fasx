@@ -2,65 +2,94 @@
 
 ## Status
 
-**Local capture preview:** implemented in the Windows companion source and included in the current build pipeline. Runtime testing on a physical Windows computer remains required.
+**Source implementation:** a view-only, same-LAN WebRTC path is now in the repository. It has separate Windows and Android sender/receiver pages, authenticated session signaling, and local permission checks.
 
-**Phone streaming:** not implemented. No screen frames are transmitted by the preview window.
+**Release status:** the new Windows/Android CI run and a real-device same-Wi-Fi test are still required. Do not treat the source implementation as a verified remote-desktop release until the Windows companion and Android app are tested together on actual devices.
 
-## Capture source
+## User-approved capture
 
-The first capture proof of concept uses Microsoft Edge WebView2 and the browser Screen Capture API:
+The Windows sender uses Microsoft Edge WebView2 and the Screen Capture API:
 
-- The local FASX page is served from the app's packaged `wwwroot` folder through a virtual HTTPS origin.
-- The owner must press **Start local preview** inside the FASX preview window.
-- The page invokes `navigator.mediaDevices.getDisplayMedia()` from that direct user click.
-- The Windows/Edge picker lets the user select a display or application window.
-- Windows displays its system capture border around the selected item.
-- Capture tracks stop when the user presses Stop, the captured item ends, or the preview window closes.
-- The preview is displayed locally only.
+- The local sender page is packaged under the Windows app's `wwwroot` directory and loaded through a virtual HTTPS origin.
+- The phone must already be paired with the Windows computer.
+- The phone requests a new session by signing a fresh session challenge with the P-256 private key stored in Android Keystore.
+- Windows verifies the signature against that phone's stored paired public key.
+- Windows displays the request and the user must approve **View screen**.
+- The Windows user must then press **Start screen sharing** and choose a display or application window in the system picker.
+- WebView2 raises `ScreenCaptureStarting`; the host window shows capture state.
+- The sender adds only the selected video track to an RTCPeerConnection. It does not add audio or input/data channels.
+- Stop, window close, permission expiry, or a disconnected/failed peer tears down the capture and revokes the view permission.
 
-This uses the WebView2 ScreenCaptureStarting event to reflect capture state in the native WPF window. The application denies other browser permission requests; no camera, microphone, location, clipboard or general web permission is granted by this preview.
+The capture page calls `navigator.mediaDevices.getDisplayMedia()` only from a direct user click. The W3C Screen Capture specification requires a user-agent-controlled display selection each time. References:
+- https://www.w3.org/TR/screen-capture/
+- https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/winrt/microsoft.web.webview2.core/corewebview2screencapturestartingeventargs
+- https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getDisplayMedia
 
-Microsoft reference:
-- https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/winrt/microsoft.web.webview2.core/corewebview2
-- https://learn.microsoft.com/en-us/windows/apps/develop/media-authoring-processing/screen-capture
+## Android receiver
 
-## Why this route
+The Android app loads a bundled local WebView page. It:
 
-WebView2 embeds the Microsoft Edge browser engine in a WPF app and provides a supported WPF integration. Its Screen Capture API surfaces a user-controlled selection flow. It avoids implementing screen capture using hidden desktop scraping or an ad-hoc GDI screenshot loop.
+- creates an RTCPeerConnection with no public STUN/TURN servers in this LAN-only prototype;
+- adds a receive-only video transceiver;
+- applies the Windows offer;
+- creates an SDP answer and waits for ICE candidate gathering to complete;
+- submits the answer over the temporary HTTPS endpoint with the session token;
+- displays the received video track in a local video element.
 
-The WebView2 runtime is a Windows prerequisite. The self-contained FASX executable bundles the .NET application, not the Evergreen WebView2 Runtime. If WebView2 is missing, FASX should show a clear installation message rather than bypassing the requirement.
+The Android WebView is not granted camera, microphone, location, or file permissions for this receiver. The viewer page contains no keyboard or pointer event forwarding.
 
-## Streaming transport decision
+## Authenticated view-session signaling
 
-WebRTC remains the preferred candidate for live screen delivery because it provides standardized peer-connection, ICE network traversal, RTP media and DTLS-SRTP protected media. FASX must use a maintained implementation with a license that supports the product's distribution model; it must not invent its own media encryption.
+The Windows companion starts a temporary HTTPS endpoint only when the user creates a view invitation. It binds to one private RFC1918 IPv4 interface on port 47834.
 
-The following items still require a proof of concept and license review before choosing the final Android/Windows transport:
-- Windows WebView2 WebRTC sender behavior and media encoding.
-- Android receiver implementation and decoding performance on target devices.
-- Android WebView support compared with a native WebRTC Android SDK.
-- Same-Wi-Fi direct connection and ICE negotiation.
-- Internet relay/TURN design and operating cost.
-- Resolution, frame rate, bitrate, thermal and mobile data usage.
-- Session expiry and permission revocation while a stream is active.
+The invitation QR includes:
+- random session ID;
+- 256-bit one-time session secret;
+- 256-bit device proof nonce;
+- private IPv4 request endpoint;
+- SHA-256 SPKI pin for the temporary host certificate;
+- short expiry.
 
-## Required next stream protocol
+The phone owner confirms the computer address before sending. The phone signs the challenge using its paired P-256 key. Windows verifies the signature against the paired-device public key and checks the one-time secret. Windows then creates a pending session request for **ViewScreen** only.
 
-The future remote-session handshake must be separate from pairing:
+The session secret is also used as a token for status, offer and answer exchanges. The session request must be locally approved before the offer endpoint returns an SDP offer. The local approval lease is separate from the short request expiry and is limited to 10 minutes.
 
-1. The phone uses its paired device identity to request a short-lived remote session.
-2. Windows displays the phone identity and requested capability set.
-3. The user approves **ViewScreen** only; no input-control permission is implied.
-4. The Windows session opens the system capture picker on a clear user action.
-5. The peers exchange authenticated signaling data over the already-pinned host connection.
-6. WebRTC establishes an encrypted peer connection, directly on the LAN where possible.
-7. The Windows companion displays the active phone, capture state, stream status and an immediate Stop button.
-8. Either side can end the session. Revoking permission closes the media and data channels.
+The signaling service validates SDP length and basic format, uses fixed-window request limits, disables response caching, and stores only one offer and one answer for this one-time session.
 
-## Not part of the preview milestone
+## Same-LAN transport
 
-- Sending screen frames to the phone.
+The first prototype uses browser-native WebRTC with an empty ICE server list. It is intended for direct connections between devices on the same reachable private network. It does not provide:
+
+- STUN-based public-address discovery;
+- TURN relay fallback;
+- remote-from-anywhere access;
+- a persistent internet signaling service.
+
+A router's client-isolation setting, separate VLANs, Windows firewall policy, or network topology may prevent the direct peer connection. Do not disable firewall/security features or weaken router protection to force a connection. Record the failure and test on a trusted home network.
+
+WebRTC media uses its standardized secure transport. FASX does not invent its own media encryption:
+- https://www.rfc-editor.org/rfc/rfc8827.html
+
+## What is deliberately not included
+
 - Remote keyboard or mouse input.
 - Audio.
-- Clipboard or file access.
-- Unattended or hidden capture.
+- Clipboard synchronization.
+- File transfer.
+- Power actions or arbitrary command execution.
+- Hidden/unattended capture.
 - Internet relay.
+
+Those capabilities require separate permissions and separate design/review. Pairing or approval of ViewScreen never grants ControlInput.
+
+## Validation required before release
+
+1. CI build and package for Windows and Android.
+2. Pair the actual phone and Windows laptop on a trusted private Wi-Fi network.
+3. Create a view invitation for that paired phone and confirm the device identity is verified.
+4. Approve View screen locally; verify no offer is returned before approval.
+5. Press Start screen sharing and select a single application window.
+6. Confirm the phone receives the video and no pointer/keyboard control is possible.
+7. Stop from Windows and from Android; verify the peer/capture closes and permission is revoked.
+8. Test wrong session token, wrong key signature, expired request, expired approval, phone disconnect, Windows close, Wi-Fi loss and re-pair.
+9. Measure resolution, frame rate, CPU/GPU use, thermal effect, and mobile data/Wi-Fi use on the target hardware.
