@@ -174,11 +174,17 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
                     new { status = SessionStatus.AwaitingLocalApproval.ToString(), permission = "ViewScreen" });
             }).RequireRateLimiting("view-request");
 
-            app.MapGet("/api/view/status/{sessionId:guid}", (Guid sessionId) =>
+            app.MapGet("/api/view/status/{sessionId:guid}", (Guid sessionId, HttpContext context) =>
             {
                 if (!server.IsKnownSession(sessionId))
                 {
                     return Results.NotFound(new { error = "View-session request was not found." });
+                }
+
+                var sessionToken = context.Request.Headers["X-FASX-Session-Token"].ToString();
+                if (!server.IsSessionTokenValid(sessionId, sessionToken))
+                {
+                    return Results.Unauthorized();
                 }
 
                 var status = authorization.GetStatus(sessionId, DateTimeOffset.UtcNow);
