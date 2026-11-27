@@ -1,12 +1,14 @@
 # FASX Production Roadmap
 
 ## Milestone 0 — Repository and Windows foundation
-**Status: foundation branch created; initial commit pending.**
+**Status: committed to production/foundation; automated build validation pending.**
 - Product and technical baseline documented.
 - Windows companion WPF shell created.
 - Shared session permission model created.
 - Unit tests for permission boundaries added.
 - Windows CI workflow added.
+
+The current Windows shell is a visible foundation screen only. It does not yet pair devices, stream a screen, transfer files, or accept remote input.
 
 ## Milestone 1 — Pairing and local consent
 - Device identity and secure local storage.
