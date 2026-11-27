@@ -20,6 +20,13 @@ data class PairingDeviceProof(
     val proofSignature: String
 )
 
+data class SessionDeviceProof(
+    val sessionId: String,
+    val deviceId: String,
+    val nonce: String,
+    val signature: String
+)
+
 object DeviceIdentity {
     private const val KEY_ALIAS = "fasx-device-signing-key-v1"
     private const val PREFS_NAME = "fasx-device-identity"
@@ -60,6 +67,34 @@ object DeviceIdentity {
             publicKeySpki = encodeUrlSafe(keyPair.public.encoded),
             proofNonce = nonce,
             proofSignature = encodeUrlSafe(signature)
+        )
+    }
+
+    fun createSessionProof(context: Context, sessionId: String, nonce: String): SessionDeviceProof {
+        val parsedSessionId = UUID.fromString(sessionId)
+        val parsedDeviceId = UUID.fromString(getOrCreateDeviceId(context))
+        val nonceBytes = Base64.decode(
+            nonce,
+            Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP
+        )
+        require(nonceBytes.size == 32) { "The session challenge is invalid." }
+
+        val canonical = listOf(
+            "FASX-SESSION-V1",
+            parsedSessionId.toString(),
+            parsedDeviceId.toString(),
+            nonce
+        ).joinToString("\\n").toByteArray(Charsets.UTF_8)
+
+        val signer = Signature.getInstance("SHA256withECDSA")
+        signer.initSign(getOrCreateSigningKey().private)
+        signer.update(canonical)
+
+        return SessionDeviceProof(
+            sessionId = parsedSessionId.toString(),
+            deviceId = parsedDeviceId.toString(),
+            nonce = nonce,
+            signature = encodeUrlSafe(signer.sign())
         )
     }
 
