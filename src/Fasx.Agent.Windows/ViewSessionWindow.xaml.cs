@@ -128,6 +128,7 @@ public partial class ViewSessionWindow : Window
         switch (status)
         {
             case SessionStatus.AwaitingLocalApproval:
+                StartStreamButton.Visibility = Visibility.Collapsed;
                 SessionStatusText.Text = "A verified request has arrived. Your approval is required.";
                 ApprovalDescriptionText.Text = "The paired phone is requesting View screen only.";
                 ApprovalButtons.Visibility = Visibility.Visible;
@@ -135,23 +136,27 @@ public partial class ViewSessionWindow : Window
 
             case SessionStatus.Approved:
                 ApprovalButtons.Visibility = Visibility.Collapsed;
+                StartStreamButton.Visibility = Visibility.Visible;
                 SessionStatusText.Text = "View screen permission approved.";
                 ApprovalDescriptionText.Text = "The phone is authorized for View screen for up to 10 minutes. Live video transport is the next connection step; no screen frames are being sent yet.";
                 break;
 
             case SessionStatus.Denied:
                 ApprovalButtons.Visibility = Visibility.Collapsed;
+                StartStreamButton.Visibility = Visibility.Collapsed;
                 ApprovalDescriptionText.Text = "You denied the view-only session request.";
                 break;
 
             case SessionStatus.Expired:
                 ApprovalButtons.Visibility = Visibility.Collapsed;
+                StartStreamButton.Visibility = Visibility.Collapsed;
                 ApprovalDescriptionText.Text = "The session request or its approval lease expired.";
                 break;
 
             case SessionStatus.Revoked:
             case SessionStatus.Cancelled:
                 ApprovalButtons.Visibility = Visibility.Collapsed;
+                StartStreamButton.Visibility = Visibility.Collapsed;
                 ApprovalDescriptionText.Text = "The view-only session was stopped locally.";
                 break;
         }
@@ -173,6 +178,7 @@ public partial class ViewSessionWindow : Window
                 TimeSpan.FromMinutes(10));
 
             ApprovalButtons.Visibility = Visibility.Collapsed;
+            StartStreamButton.Visibility = Visibility.Visible;
             SessionStatusText.Text = "View screen permission approved.";
             ApprovalDescriptionText.Text = "Only View screen is approved for 10 minutes. The screen stream has not started.";
         }
@@ -193,6 +199,7 @@ public partial class ViewSessionWindow : Window
         {
             _authorization.DenyLocally(_invitation.SessionId);
             ApprovalButtons.Visibility = Visibility.Collapsed;
+            StartStreamButton.Visibility = Visibility.Collapsed;
             SessionStatusText.Text = "View-only session denied.";
             ApprovalDescriptionText.Text = "The phone will receive the denial status.";
         }
@@ -202,6 +209,35 @@ public partial class ViewSessionWindow : Window
         }
     }
 
+    private void StartStream_Click(object sender, RoutedEventArgs e)
+    {
+        if (_server is null || _invitation is null)
+        {
+            SessionStatusText.Text = "Create a view invitation first.";
+            return;
+        }
+
+        if (!_authorization.HasPermission(
+            _invitation.SessionId,
+            SessionPermission.ViewScreen,
+            DateTimeOffset.UtcNow))
+        {
+            SessionStatusText.Text = "View screen permission is no longer active.";
+            StartStreamButton.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        var remoteScreenWindow = new RemoteScreenWindow(
+            _server,
+            _authorization,
+            _invitation.SessionId)
+        {
+            Owner = this
+        };
+        remoteScreenWindow.ShowDialog();
+        RefreshSessionStatus();
+    }
+
     private async void StopSession_Click(object sender, RoutedEventArgs e)
     {
         await StopServerAsync();
@@ -209,6 +245,7 @@ public partial class ViewSessionWindow : Window
         SessionEndpointText.Text = string.Empty;
         SessionExpiryText.Text = string.Empty;
         ApprovalButtons.Visibility = Visibility.Collapsed;
+        StartStreamButton.Visibility = Visibility.Collapsed;
         StopSessionButton.Visibility = Visibility.Collapsed;
         CreateInviteButton.IsEnabled = PairedDeviceCombo.Items.Count > 0;
         SessionStatusText.Text = "View-only session stopped. The temporary HTTPS listener is closed.";
