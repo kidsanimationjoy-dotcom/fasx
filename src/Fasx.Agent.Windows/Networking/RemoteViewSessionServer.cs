@@ -184,7 +184,7 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
                 var status = authorization.GetStatus(sessionId, DateTimeOffset.UtcNow);
                 return Results.Json(new { status = status.ToString(), permission = "ViewScreen" }, options: JsonOptions);
             }).RequireRateLimiting("view-status");
-            app.MapGet("/api/view/offer/{sessionId:guid}", (Guid sessionId) =>
+            app.MapGet("/api/view/offer/{sessionId:guid}", (Guid sessionId, HttpContext context) =>
             {
                 if (!server.IsKnownSession(sessionId))
                 {
@@ -268,12 +268,17 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
                 throw new ObjectDisposedException(nameof(RemoteViewSessionServer));
             }
 
-            if (_invitation is not null && nowUtc < _invitation.ExpiresAtUtc && !_claimConsumed)
+            if (_invitation is not null)
             {
-                throw new InvalidOperationException("A view invitation is already active.");
+                throw new InvalidOperationException("This view-session server has already issued an invitation. Stop it and create a new session to re-invite.");
             }
 
             ClearInvitationSecret();
+            if (_sessionTokenHash is not null)
+            {
+                CryptographicOperations.ZeroMemory(_sessionTokenHash);
+                _sessionTokenHash = null;
+            }
             var secretBytes = RandomNumberGenerator.GetBytes(32);
             var nonceBytes = RandomNumberGenerator.GetBytes(32);
             var invitation = new ViewSessionInvitation(
@@ -505,8 +510,12 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
     private bool VerifySessionTokenUnderLock(string? token)
     {
         if (_sessionTokenHash is null ||
-            !Base64Url.TryDecode(token, out var tokenBytes) ||
-            tokenBytes.Length != 32)
+            !Base64Url.TryDecode(token, out var tokenBytes))
+        {
+            return false;
+        }
+
+        if (tokenBytes.Length != 32)
         {
             CryptographicOperations.ZeroMemory(tokenBytes);
             return false;
