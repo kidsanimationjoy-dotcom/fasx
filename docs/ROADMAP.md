@@ -1,24 +1,27 @@
 # FASX Production Roadmap
 
 ## Milestone 0 — Repository and client foundations
-**Status: committed to production/foundation; CI validation pending.**
+**Status: completed for the foundation preview.** Windows and Android CI passed on commit `5089c40d9999a04467ca6ecc0bc4b0471b9a3698`.
 - Product and technical baseline documented.
 - Visible Windows companion shell created.
+- Local read-only Windows PC Health panel created.
 - Shared session-permission model and tests created.
 - In-memory pairing ceremony domain and tests created.
 - Android Compose foundation UI created.
-- Windows and Android build workflows added.
+- Windows build, unit tests, and portable x64 publishing passed.
+- Android debug APK assembly and artifact upload passed.
 
-The Windows and Android screens are foundation previews only. They do not yet pair devices, stream a screen, transfer files, or accept remote input.
+The Windows and Android apps are foundation previews. They do not yet pair devices, stream a screen, transfer files, or accept remote input.
 
 ## Milestone 1 — Secure device pairing
-- Windows-protected host identity and phone key storage.
-- Short-lived single-use QR pairing.
-- Authenticated HTTPS signaling endpoints.
-- Host-side local approval screen and device details.
-- Paired-device list, revocation and audit history.
-- Android QR scanning and key enrollment.
-- Persist device trust safely and prove device-key possession.
+- Persist host and trusted-device identity using platform-protected storage.
+- Add authenticated HTTPS signaling endpoints.
+- Implement short-lived single-use QR pairing.
+- Add host-side local approval screen and requesting-device details.
+- Add paired-device list, revocation and audit history.
+- Add Android QR scanning and key enrollment.
+- Prove device-key possession and protect against replay.
+- Add rate limits and integration tests.
 
 ## Milestone 2 — First real remote session
 - WebRTC proof of concept.
@@ -37,7 +40,7 @@ The Windows and Android screens are foundation previews only. They do not yet pa
 ## Milestone 4 — File Bridge and device health
 - User-selected folder roots.
 - Two-way file transfer with integrity checks and cancellation.
-- CPU, memory, disk, battery, and OS information.
+- Expand CPU, memory, disk, battery, and OS information.
 - Health summaries with read-only default behavior.
 
 ## Milestone 5 — SmartDeck and Context Control
