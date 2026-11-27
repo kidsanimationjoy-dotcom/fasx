@@ -588,6 +588,17 @@ private fun FasxHome(
                                     }, "Fasx")
 
                                     webViewClient = object : WebViewClient() {
+                                        override fun shouldOverrideUrlLoading(
+                                            view: WebView?,
+                                            request: android.webkit.WebResourceRequest
+                                        ): Boolean {
+                                            val requested = request.url.toString()
+                                            return !requested.startsWith(
+                                                "file:///android_asset/",
+                                                ignoreCase = true
+                                            )
+                                        }
+
                                         override fun onPageFinished(view: WebView?, url: String?) {
                                             state.pageLoaded = true
                                             val pending = state.pendingOfferSdp
