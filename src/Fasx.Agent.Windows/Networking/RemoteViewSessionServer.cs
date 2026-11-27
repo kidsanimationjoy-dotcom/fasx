@@ -33,6 +33,7 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
     private readonly PairedDevice _targetDevice;
     private ViewSessionInvitation? _invitation;
     private byte[]? _secretHash;
+    private byte[]? _sessionTokenHash;
     private bool _claimConsumed;
     private string? _hostOfferSdp;
     private string? _phoneAnswerSdp;
@@ -196,6 +197,12 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
                     return Results.Json(new { status = state.ToString() }, options: JsonOptions);
                 }
 
+                var sessionToken = context.Request.Headers["X-FASX-Session-Token"].ToString();
+                if (!server.IsSessionTokenValid(sessionId, sessionToken))
+                {
+                    return Results.Unauthorized();
+                }
+
                 var offer = server.GetHostOfferForPhone(sessionId, DateTimeOffset.UtcNow);
                 return offer is null
                     ? Results.Json(new { status = "WaitingForScreen" }, options: JsonOptions)
@@ -225,7 +232,12 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
                     return Results.BadRequest(new { error = "The WebRTC answer session identifier is invalid." });
                 }
 
-                if (!server.StorePhoneAnswer(sessionId, answer.Sdp, DateTimeOffset.UtcNow, out var error))
+                if (!server.StorePhoneAnswer(
+                    sessionId,
+                    answer.Secret,
+                    answer.Sdp,
+                    DateTimeOffset.UtcNow,
+                    out var error))
                 {
                     return Results.BadRequest(new { error = error ?? "The WebRTC answer was rejected." });
                 }
@@ -271,6 +283,7 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
                 nowUtc.Add(InvitationLifetime));
 
             _secretHash = SHA256.HashData(secretBytes);
+            _sessionTokenHash = (byte[])_secretHash.Clone();
             _invitation = invitation;
             _claimConsumed = false;
 
@@ -401,6 +414,15 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
         }
     }
 
+    public bool IsSessionTokenValid(Guid sessionId, string token)
+    {
+        lock (_sync)
+        {
+            return IsKnownSessionUnderLock(sessionId) &&
+                   VerifySessionTokenUnderLock(token);
+        }
+    }
+
     public string? GetHostOfferForPhone(Guid sessionId, DateTimeOffset nowUtc)
     {
         lock (_sync)
@@ -415,13 +437,19 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
         }
     }
 
-    public bool StorePhoneAnswer(Guid sessionId, string sdp, DateTimeOffset nowUtc, out string? error)
+    public bool StorePhoneAnswer(
+        Guid sessionId,
+        string sessionToken,
+        string sdp,
+        DateTimeOffset nowUtc,
+        out string? error)
     {
         lock (_sync)
         {
-            if (!IsKnownSessionUnderLock(sessionId))
+            if (!IsKnownSessionUnderLock(sessionId) ||
+                !VerifySessionTokenUnderLock(sessionToken))
             {
-                error = "The view session is not authenticated.";
+                error = "The view-session token is invalid.";
                 return false;
             }
 
@@ -474,13 +502,30 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
     private bool IsKnownSessionUnderLock(Guid sessionId) =>
         _invitation?.SessionId == sessionId && _claimConsumed;
 
+    private bool VerifySessionTokenUnderLock(string? token)
+    {
+        if (_sessionTokenHash is null ||
+            !Base64Url.TryDecode(token, out var tokenBytes) ||
+            tokenBytes.Length != 32)
+        {
+            CryptographicOperations.ZeroMemory(tokenBytes);
+            return false;
+        }
+
+        var tokenHash = SHA256.HashData(tokenBytes);
+        var valid = CryptographicOperations.FixedTimeEquals(_sessionTokenHash, tokenHash);
+        CryptographicOperations.ZeroMemory(tokenBytes);
+        CryptographicOperations.ZeroMemory(tokenHash);
+        return valid;
+    }
+
     private static bool IsValidSdp(string? sdp) =>
         !string.IsNullOrWhiteSpace(sdp) &&
         sdp.Length <= MaximumSdpLength &&
         sdp.StartsWith("v=0", StringComparison.Ordinal) &&
         !sdp.Contains('\\0');
 
-    private sealed record ViewSessionAnswer(Guid SessionId, string Sdp);
+    private sealed record ViewSessionAnswer(Guid SessionId, string Secret, string Sdp);
 
     public async ValueTask DisposeAsync()
     {
@@ -493,6 +538,11 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
                 _authorization.CancelLocally(_invitation.SessionId);
             }
             ClearInvitationSecret();
+            if (_sessionTokenHash is not null)
+            {
+                CryptographicOperations.ZeroMemory(_sessionTokenHash);
+                _sessionTokenHash = null;
+            }
         }
 
         try
