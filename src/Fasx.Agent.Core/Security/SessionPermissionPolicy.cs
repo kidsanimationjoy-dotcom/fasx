@@ -8,6 +8,20 @@ namespace Fasx.Agent.Core.Security;
 /// </summary>
 public static class SessionPermissionPolicy
 {
+    public const SessionPermission AllKnownPermissions =
+        SessionPermission.ViewScreen |
+        SessionPermission.ControlInput |
+        SessionPermission.TransferFiles |
+        SessionPermission.ShareClipboard |
+        SessionPermission.ReadDiagnostics |
+        SessionPermission.PlayRemoteAudio |
+        SessionPermission.RunPowerActions |
+        SessionPermission.ControlPeripherals;
+
+    public static bool IsPermissionSetValid(SessionPermission permissions) =>
+        permissions != SessionPermission.None &&
+        (permissions & ~AllKnownPermissions) == SessionPermission.None;
+
     public static bool IsApprovalValid(
         SessionRequest request,
         SessionApproval approval,
@@ -16,17 +30,23 @@ public static class SessionPermissionPolicy
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(approval);
 
-        if (!approval.ApprovedByLocalUser ||
+        if (request.SessionId == Guid.Empty ||
+            request.DeviceId == Guid.Empty ||
             approval.SessionId != request.SessionId ||
-            request.ExpiresAtUtc <= nowUtc ||
-            approval.ExpiresAtUtc <= nowUtc ||
+            !IsPermissionSetValid(request.RequestedPermissions) ||
+            !IsPermissionSetValid(approval.ApprovedPermissions) ||
+            !approval.ApprovedByLocalUser ||
+            approval.ApprovedAtUtc >= request.ExpiresAtUtc ||
             approval.ApprovedAtUtc > nowUtc ||
-            approval.ApprovedPermissions == SessionPermission.None)
+            approval.ExpiresAtUtc <= approval.ApprovedAtUtc ||
+            approval.ExpiresAtUtc <= nowUtc)
         {
             return false;
         }
 
         // A local approval may grant fewer permissions than requested, never more.
+        // The request expiry is only the deadline to approve; it does not end an
+        // already-approved session. The approval lease controls session expiry.
         var permissionsNotRequested = approval.ApprovedPermissions & ~request.RequestedPermissions;
         return permissionsNotRequested == SessionPermission.None;
     }
@@ -37,7 +57,8 @@ public static class SessionPermissionPolicy
         SessionPermission permission,
         DateTimeOffset nowUtc)
     {
-        if (permission == SessionPermission.None || !IsApprovalValid(request, approval, nowUtc))
+        if (!IsPermissionSetValid(permission) ||
+            !IsApprovalValid(request, approval, nowUtc))
         {
             return false;
         }
