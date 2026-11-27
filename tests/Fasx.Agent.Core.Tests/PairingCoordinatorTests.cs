@@ -205,7 +205,7 @@ public sealed class PairingCoordinatorTests
             Task.Run(() => coordinator.SubmitClaim(firstClaim, now)),
             Task.Run(() => coordinator.SubmitClaim(secondClaim, now)));
 
-        Assert.Single(results.Where(result => result.Accepted));
+        Assert.Single(results, result => result.Accepted);
         Assert.Single(coordinator.GetPendingRequests(now));
     }
 
