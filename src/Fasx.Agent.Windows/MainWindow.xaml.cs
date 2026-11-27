@@ -53,6 +53,21 @@ public partial class MainWindow : Window
         previewWindow.ShowDialog();
     }
 
+    private void ViewSession_Click(object sender, RoutedEventArgs e)
+    {
+        if (_pairingCoordinator is null)
+        {
+            return;
+        }
+
+        var viewSessionWindow = new ViewSessionWindow(_pairingCoordinator)
+        {
+            Owner = this
+        };
+        viewSessionWindow.ShowDialog();
+        RefreshPairedDeviceCount();
+    }
+
     private void RefreshPairedDeviceCount()
     {
         if (_pairingCoordinator is not null)
