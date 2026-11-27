@@ -20,6 +20,11 @@
 - Windows stores only approved public-device identity records using DPAPI for the current Windows user.
 - Local approval/denial/cancellation is never exposed as a network API.
 - Pairing is not permission to view or control the screen.
+- Each view-only session uses a separate signed challenge from the paired phone.
+- Windows verifies the paired public key and issues only a ViewScreen request.
+- The user must locally approve the session before any WebRTC offer is returned.
+- A short session token is required for status, offer, and answer signaling.
+- A ViewScreen approval has a separate, bounded 10-minute maximum lease.
 
 ## Session permissions
 
@@ -39,7 +44,9 @@ Sensitive actions may require an additional confirmation at execution time even 
 
 ## Screen capture and input
 
-- Use Windows.Graphics.Capture system picker and visible system capture indication.
+- Use the WebView2 Screen Capture API and Windows system picker with a visible capture indication.
+- Only a user-selected video track is sent. The view-only prototype has no remote input, audio, or data channel.
+- Stop capture and revoke the view permission on local stop, capture end, lease expiry, or peer disconnect.
 - Do not implement hidden capture or bypass the operating system's capture UI.
 - Input is enabled only with a current ControlInput grant.
 - Display connected controller identity on Windows.
@@ -56,7 +63,9 @@ Sensitive actions may require an additional confirmation at execution time even 
 
 ## Transport and credentials
 
-- Use standard authenticated transport such as WebRTC DTLS-SRTP and secure data channels if WebRTC is selected.
+- Use standard WebRTC transport security (DTLS-SRTP) for screen media; do not invent media encryption.
+- The current same-LAN prototype uses browser-native RTCPeerConnection and no public STUN/TURN servers.
+- Authenticate the HTTPS signaling request using the QR-pinned host certificate and a one-time session token.
 - Never invent a cryptographic protocol.
 - Protect Windows secrets with DPAPI/Windows credential facilities and Android secrets with Android Keystore.
 - Do not store API keys, relay credentials, private keys, or secrets in repository.
