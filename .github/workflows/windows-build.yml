@@ -33,3 +33,14 @@ jobs:
 
       - name: Test
         run: dotnet test FASX.sln --configuration Release --no-build
+
+      - name: Publish Windows companion
+        run: dotnet publish src/Fasx.Agent.Windows/Fasx.Agent.Windows.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true --output artifacts/windows
+
+      - name: Upload Windows companion
+        uses: actions/upload-artifact@v4
+        with:
+          name: fasx-windows-companion-win-x64
+          path: artifacts/windows/
+          if-no-files-found: error
+          retention-days: 14
