@@ -69,6 +69,7 @@ public sealed class PairingCoordinator
         Guid deviceId,
         string? displayName,
         string? publicKeyBase64,
+        string? proofSignatureBase64,
         DateTimeOffset nowUtc,
         out PairingDeviceRequest? request)
     {
@@ -80,6 +81,34 @@ public sealed class PairingCoordinator
             !TryNormalizePublicKey(publicKeyBase64, out var normalizedPublicKey) ||
             !TryDecodeSecret(secret, out var secretBytes))
         {
+            return false;
+        }
+
+        byte[] proofPayload;
+        try
+        {
+            proofPayload = PairingProof.CreatePayload(
+                pairingId,
+                deviceId,
+                normalizedName,
+                secretBytes);
+        }
+        catch (ArgumentException)
+        {
+            CryptographicOperations.ZeroMemory(secretBytes);
+            return false;
+        }
+
+        var proofIsValid = VerifyProofOfPossession(
+            normalizedPublicKey,
+            proofSignatureBase64,
+            proofPayload);
+
+        CryptographicOperations.ZeroMemory(proofPayload);
+
+        if (!proofIsValid)
+        {
+            CryptographicOperations.ZeroMemory(secretBytes);
             return false;
         }
 
@@ -265,21 +294,95 @@ public sealed class PairingCoordinator
             return false;
         }
 
+        byte[]? bytes = null;
         try
         {
-            var bytes = Convert.FromBase64String(value);
+            bytes = Convert.FromBase64String(value);
             if (bytes.Length is < MinimumPublicKeyBytes or > MaximumPublicKeyBytes)
             {
                 return false;
             }
 
+            using var verifier = ECDsa.Create();
+            verifier.ImportSubjectPublicKeyInfo(bytes, out var bytesRead);
+
+            if (bytesRead != bytes.Length || verifier.KeySize != 256)
+            {
+                return false;
+            }
+
+            var parameters = verifier.ExportParameters(includePrivateParameters: false);
+            if (!string.Equals(
+                    parameters.Curve.Oid.Value,
+                    "1.2.840.10045.3.1.7",
+                    StringComparison.Ordinal))
+            {
+                return false;
+            }
+
             normalized = Convert.ToBase64String(bytes);
-            CryptographicOperations.ZeroMemory(bytes);
             return true;
         }
-        catch (FormatException)
+        catch (Exception exception) when (
+            exception is FormatException or CryptographicException or ArgumentException)
         {
             return false;
+        }
+        finally
+        {
+            if (bytes is not null)
+            {
+                CryptographicOperations.ZeroMemory(bytes);
+            }
+        }
+    }
+
+    private static bool VerifyProofOfPossession(
+        string publicKeyBase64,
+        string? signatureBase64,
+        ReadOnlySpan<byte> payload)
+    {
+        if (string.IsNullOrWhiteSpace(signatureBase64) || signatureBase64.Length > 256)
+        {
+            return false;
+        }
+
+        byte[]? publicKeyBytes = null;
+        byte[]? signatureBytes = null;
+
+        try
+        {
+            publicKeyBytes = Convert.FromBase64String(publicKeyBase64);
+            signatureBytes = Convert.FromBase64String(signatureBase64);
+
+            if (signatureBytes.Length is < 64 or > 128)
+            {
+                return false;
+            }
+
+            using var verifier = ECDsa.Create();
+            verifier.ImportSubjectPublicKeyInfo(publicKeyBytes, out var publicBytesRead);
+
+            return publicBytesRead == publicKeyBytes.Length &&
+                   verifier.KeySize == 256 &&
+                   verifier.VerifyData(payload, signatureBytes, HashAlgorithmName.SHA256);
+        }
+        catch (Exception exception) when (
+            exception is FormatException or CryptographicException or ArgumentException)
+        {
+            return false;
+        }
+        finally
+        {
+            if (publicKeyBytes is not null)
+            {
+                CryptographicOperations.ZeroMemory(publicKeyBytes);
+            }
+
+            if (signatureBytes is not null)
+            {
+                CryptographicOperations.ZeroMemory(signatureBytes);
+            }
         }
     }
 
