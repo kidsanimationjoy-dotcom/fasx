@@ -1,5 +1,9 @@
 # FASX Android Client
 
+## Project status
+
+The Android client contains the same-LAN pairing flow and the view-only WebRTC receiver source. GitHub Actions successfully assembled the current debug APK. Real-device pairing and screen-stream playback on the target phone and Windows computer are still pending, so this is a development build rather than a production release.
+
 ## Build environment
 
 - Android Gradle Plugin 9.4.0
@@ -24,19 +28,28 @@ gradle --no-daemon :app:assembleDebug
 
 - Compose SmartDeck landing screen.
 - Google Code Scanner integration for FASX QR invitations.
-- Strict invitation parsing: version, type, 256-bit secret, HTTPS endpoint, specific claim route/port, SPKI pin, and short expiry.
+- Strict invitation parsing: version, invitation type, 256-bit secret, HTTPS endpoint, expected claim/session route and port, SPKI pin, and short expiry.
 - P-256 ECDSA device signing key held in Android Keystore.
-- Device identity ID stored locally.
+- Locally stored device identity ID.
 - Phone-side confirmation of the scanned computer address before transmission.
-- HTTPS claim submission with certificate SPKI pin verification.
-- Read-only polling of pairing state.
+- Pinned HTTPS pairing claim and pairing-status polling.
+- View-session QR parsing and validation for an already-paired device.
+- Signed view-session request using the Android Keystore identity.
+- Session-token-protected status and offer retrieval, plus answer submission.
+- Bundled WebView receiver page using a receive-only video transceiver.
+- Restricted viewer navigation to the bundled receiver page.
 
-## What remains
+## Still to verify or build
 
-- Build validation in GitHub Actions and Android Studio.
-- Real phone-to-Windows same-network pairing test.
-- Re-pair/revoke device screen.
-- Persisted paired-device list in Android.
-- Remote screen, touchpad, keyboard, File Bridge, and session permission UI.
+- Real same-Wi-Fi pairing test with a physical Windows computer.
+- Real view-only video playback and stop/revoke test on physical devices.
+- Wi-Fi interruption, phone sleep/backgrounding, expiry, and reconnect behaviour.
+- Stream quality, device temperature, battery and network usage on target hardware.
+- Paired-device management and revocation UI.
+- Remote input, only as a later separate permission with explicit Windows-local approval.
+- File Bridge, internet relay, and other later roadmap features.
+- Signed production release package.
 
-This app does not enable remote control merely because it has paired a device. Every remote session must be separately approved by the Windows user.
+## Permission boundary
+
+Pairing registers a phone identity; it does not itself grant screen viewing or computer control. A separate view-only session request must be approved locally on Windows, and the Windows user must explicitly start screen sharing and choose what to share. This build has no keyboard, mouse, audio, file-transfer, clipboard, or arbitrary-command channel.
