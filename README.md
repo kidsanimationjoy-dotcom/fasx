@@ -4,7 +4,7 @@
 
 FASX is an all-in-one personal computer command centre combining secure remote desktop, computer management, customizable controls, and user-approved automation.
 
-> **Project status: foundation preview.** The repository contains a visible Windows companion shell with a local read-only PC Health panel, an Android Compose interface scaffold, a permission-domain model, and an in-memory pairing ceremony with tests. Device pairing over a network, live screen streaming, remote input, and file transfer are not implemented yet.
+> **Project status: foundation preview.** The repository contains a visible Windows companion with a local read-only PC Health panel, an Android Compose app with editable SmartDeck profiles, a permission-domain model, and an in-memory pairing ceremony with tests. Device pairing over a network, live screen streaming, remote input, and file transfer are not implemented yet.
 
 ## Product vision
 
@@ -20,7 +20,7 @@ It combines three experiences:
 | System | Purpose |
 |---|---|
 | FASX Remote | Remote screen, touch, keyboard, and computer control |
-| SmartDeck | Customizable command centre |
+| SmartDeck | Customizable command centre with experience profiles |
 | Context Control | Controls adapted to the active application, with user permission |
 | FASX Flows | User-created workflows built from approved actions |
 | FASX Intelligence | Explainable PC health insights and assistance |
@@ -41,10 +41,10 @@ It combines three experiences:
 
 - `src/Fasx.Agent.Core` — session permissions and pairing domain rules.
 - `src/Fasx.Agent.Windows` — visible Windows companion and local PC health.
-- `apps/android` — Android Compose client foundation.
+- `apps/android` — Android Compose client and SmartDeck.
 - `services/signaling` — signaling/control-plane design entry point.
 - `tests/Fasx.Agent.Core.Tests` — security and domain tests.
-- `docs` — product, architecture, pairing, security, protocol, research, and roadmap.
+- `docs` — product, architecture, pairing, security, protocol, research, build status and roadmap.
 
 ## Build the Windows foundation
 
@@ -66,15 +66,30 @@ gradle -p apps/android :app:assembleDebug
 
 Version notes are in [docs/ANDROID_BUILD.md](docs/ANDROID_BUILD.md).
 
+## What works in the current foundation
+
+### Windows companion
+- Visible FASX desktop window.
+- Read-only local PC Health: Windows version, processor count, memory, system-drive space, battery and uptime.
+- Refresh the local health values.
+- Windows build, unit tests and self-contained x64 publishing pass in CI.
+
+### Android client
+- Home, Devices and Security tabs.
+- SmartDeck profiles: Everyday, Student, Professional, Creator, and Business & IT.
+- Customize cards by hiding/showing them and changing their order.
+- SmartDeck mode and layout are saved locally on the phone.
+- Android debug APK builds successfully in CI.
+
 ## Current limitations
 
-- The Windows app is a local companion with read-only PC Health; remote pairing and control are not connected.
-- The Android app is a UI scaffold with Home, Devices, and Security tabs.
+- The Windows app is a local companion; remote pairing and control are not connected.
+- The Android SmartDeck cards are interface previews. They do not send remote actions.
 - PairingCoordinator is an in-memory domain implementation for testing; it is not a network service or durable device registry.
 - QR rendering/scanning, authenticated signaling endpoints, device-key proof, live remote desktop, remote input, and file transfer remain to be implemented.
 - The phone app does not currently connect to the Windows app.
 
-Do not treat this foundation preview as a working remote-control release.
+Do not treat this foundation preview as a working remote-control release. See [docs/BUILD_STATUS.md](docs/BUILD_STATUS.md).
 
 ## Security principles
 
@@ -91,4 +106,4 @@ Read [the security model](docs/SECURITY_MODEL.md) and [pairing flow](docs/PAIRIN
 
 ## Development
 
-Work in feature branches. The current production foundation work is on `production/foundation` and is proposed in [PR #1](https://github.com/kidsanimationjoy-dotcom/fasx/pull/1). Build checks must pass before merging to `main`.
+Work in feature branches. Current production foundation work is on `production/foundation` and is proposed in [PR #1](https://github.com/kidsanimationjoy-dotcom/fasx/pull/1). Build checks must pass before merging to `main`.

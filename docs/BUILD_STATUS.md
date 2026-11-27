@@ -2,18 +2,22 @@
 
 ## Verified foundation build
 
-- Commit: `5089c40d9999a04467ca6ecc0bc4b0471b9a3698`
+- Code commit: `5d6ccee6d0e7516df45e5e2718831f62c98753c4`
 - Branch: `production/foundation`
 - Date: 2026-11-27
-- Windows CI: passed (restore, build, tests, self-contained win-x64 publish, artifact upload).
+- Windows CI: passed (restore, build, unit tests, self-contained win-x64 publish, artifact upload).
 - Android CI: passed (Gradle setup, debug APK assembly, artifact upload).
+
+Workflow runs:
+- Windows: https://github.com/kidsanimationjoy-dotcom/fasx/actions/runs/46053683297
+- Android: https://github.com/kidsanimationjoy-dotcom/fasx/actions/runs/46053678041
 
 ## Artifacts
 
 - Windows: `FASX-Windows-Foundation-win-x64`
 - Android: `FASX-Android-Foundation-debug`
 
-The workflow artifacts are temporary GitHub Actions artifacts and expire according to the expiry shown by GitHub. They are development preview builds, not production releases.
+These are development preview builds, not production releases. GitHub Actions artifacts are temporary and expire according to the expiry shown by GitHub.
 
 ## What can be tested now
 
@@ -24,19 +28,21 @@ The workflow artifacts are temporary GitHub Actions artifacts and expire accordi
 
 ### Android
 - Open the Home, Devices and Security tabs.
-- Review the SmartDeck module layout.
-- Open the pairing information dialog.
-- The interface explicitly reports that no computer is paired and no remote action is sent.
+- Select one of the five SmartDeck experience profiles.
+- Open Customize to show/hide cards and move them up/down.
+- Close and reopen the app to verify that the selected profile and layout remain saved locally.
+- Open the pairing information dialog. It clearly reports that pairing is not connected yet.
 
 ## Not implemented yet
 
 - QR pairing in the actual apps.
 - Authenticated signaling or device-key proof.
-- Durable device registry.
+- Durable trusted-device registry.
 - Phone-to-Windows connection.
 - Live screen streaming.
 - Remote mouse/keyboard.
 - File transfer.
 - Remote power actions or audio.
+- Physical-device end-to-end test.
 
-The Windows and Android builds are successfully compiled foundation previews. No physical-device end-to-end test has yet been completed.
+The Windows and Android builds are successfully compiled foundation previews. Passing CI does not mean the remote-control system is complete.

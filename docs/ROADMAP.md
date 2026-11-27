@@ -1,13 +1,15 @@
 # FASX Production Roadmap
 
 ## Milestone 0 — Repository and client foundations
-**Status: completed for the foundation preview.** Windows and Android CI passed on commit `5089c40d9999a04467ca6ecc0bc4b0471b9a3698`.
+**Status: completed for the foundation preview.** Windows and Android CI passed on code commit `5d6ccee6d0e7516df45e5e2718831f62c98753c4`.
 - Product and technical baseline documented.
 - Visible Windows companion shell created.
 - Local read-only Windows PC Health panel created.
 - Shared session-permission model and tests created.
 - In-memory pairing ceremony domain and tests created.
-- Android Compose foundation UI created.
+- Android Compose app created with Home, Devices and Security tabs.
+- SmartDeck experience profiles added: Everyday, Student, Professional, Creator, and Business & IT.
+- SmartDeck card visibility and ordering are customizable and saved on the phone.
 - Windows build, unit tests, and portable x64 publishing passed.
 - Android debug APK assembly and artifact upload passed.
 
@@ -44,7 +46,7 @@ The Windows and Android apps are foundation previews. They do not yet pair devic
 - Health summaries with read-only default behavior.
 
 ## Milestone 5 — SmartDeck and Context Control
-- Customizable control cards.
+- Add user-created control cards and drag-and-drop editing.
 - Application-aware panels (opt-in).
 - Deck export/import with validation.
 - Deck Gallery templates.

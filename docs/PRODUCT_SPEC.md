@@ -23,42 +23,60 @@ FASX is an all-in-one personal computer command centre. It unites remote desktop
 ## Signature systems
 
 ### SmartDeck
-A customizable home screen made from movable cards and action panels. Deck cards have a stable type, required permissions, configuration schema, and version.
+
+A customizable phone command centre made from control cards.
+
+**Foundation implementation:**
+- Five experience profiles: Everyday, Student, Professional, Creator, and Business & IT.
+- Users can show or hide individual cards.
+- Users can move cards up and down to change their order.
+- The selected profile, card order and visibility are saved locally on the Android device using app preferences.
+- Cards with unimplemented remote functions clearly identify themselves as previews and do not send remote actions.
+
+**Next steps:** user-created cards, drag-and-drop editing, optional device-specific layouts, import/export and Deck Gallery templates.
 
 ### Context Control
+
 Offers the appropriate panel for the foreground application, if the user enables application detection. It must never read application content or capture additional data merely to select a control panel.
 
 ### FASX Flows
+
 A visual workflow builder that chains approved, typed actions. The first release should support simple sequences, explicit confirmation gates, cancellation, and execution logs. No arbitrary script, shell, or downloaded-code actions.
 
 ### Deck Gallery
+
 A library for sharing signed/versioned SmartDeck layouts and safe Flow templates. Imported templates are inert until reviewed and enabled. Templates cannot contain executable binaries or unrestricted commands.
 
 ### FASX Intelligence
+
 An explainable helper for interpreting locally collected device-health metrics. Recommendations are advisory by default; system modifications require a separate, explicit confirmation.
 
 ### File Bridge
+
 A two-way file manager with scoped locations, transfer progress, checksums, cancellation, and conflict handling.
 
 ### Connection Guardian
+
 Monitors connectivity, latency, packet loss where available, stream quality, and reconnect state. It communicates when a session is relayed rather than direct.
 
 ### Security Shield
+
 Owns pairing, device identity, session approval, least-privilege permissions, visible activity, and device/session revocation.
 
 ### FASX Business
+
 A later managed mode with organization-owned device groups, role-based administration, policy controls, and audit export. It must not weaken local user visibility or consent.
 
-## First release scope
+## First end-to-end release scope
 
-The first end-to-end release should include:
+The first fully connected release should include:
 - Android-to-Windows device pairing with local confirmation.
 - Direct LAN connection and internet relay fallback.
 - Live screen viewing through the Windows system capture picker.
 - Touchpad, click, scrolling, and remote keyboard with separate permissions.
 - Visible active-session status and local disconnect.
 - Connection quality and reconnection state.
-- A basic SmartDeck with customizable cards.
+- A customizable SmartDeck.
 
 File Bridge, diagnostics, Flows, and business administration follow as separate tested milestones.
 
