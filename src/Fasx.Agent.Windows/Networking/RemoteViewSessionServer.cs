@@ -316,6 +316,10 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
         {
             if (_disposed) return;
             _disposed = true;
+            if (_invitation is not null && _claimConsumed)
+            {
+                _authorization.CancelLocally(_invitation.SessionId);
+            }
             ClearInvitationSecret();
         }
 
