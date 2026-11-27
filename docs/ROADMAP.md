@@ -12,17 +12,18 @@
 - Android debug APK assembly and artifact upload passed.
 
 ## Milestone 1 — Secure device pairing
-**Status: partial implementation; no network pairing yet.**
+**Status: core Windows-side domain and persistence implemented; no network pairing yet.**
 - Windows P-256 device identity is created once and protected with DPAPI CurrentUser.
 - Identity exposes a local device ID and public key; private key signs SHA-256 ECDSA challenges.
 - Damaged or undecryptable identity data fails closed rather than silently replacing the identity.
 - In-memory coordinator creates short-lived, single-use pairing invitations.
 - Pairing requests must present a valid P-256 public key and proof-of-possession signature.
 - Invalid proof does not consume the invitation; valid proof consumes it before local host approval.
-- Tests cover identity persistence, signing after reload, corrupt storage, disposal, pairing proof, replay, expiry, host approval, denial and revocation.
+- DPAPI-protected registry stores approved controller public keys and metadata across application restarts.
+- Windows pairing service joins host approval to persistent trusted-device storage and revocation.
+- Tests cover identity reload/signing, corruption, disposal, proof-of-possession, replay, expiry, host-only approval, protected registry persistence and revocation.
 
 Still required:
-- Persist trusted phone records.
 - Authenticated HTTPS signaling endpoints.
 - Android Keystore-backed P-256 identity and QR scanning.
 - Windows QR generation and local approval UI.

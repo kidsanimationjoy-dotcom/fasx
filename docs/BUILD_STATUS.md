@@ -1,43 +1,48 @@
 # FASX Build Status
 
-## Verified foundation build
+## Last verified client foundation
 
-- Code commit: `5d6ccee6d0e7516df45e5e2718831f62c98753c4`
-- Branch: `production/foundation`
-- Date: 2026-11-27
+- Code commit: 5d6ccee6d0e7516df45e5e2718831f62c98753c4
 - Windows CI: passed (restore, build, unit tests, self-contained win-x64 publish, artifact upload).
 - Android CI: passed (Gradle setup, debug APK assembly, artifact upload).
 
-Workflow runs:
-- Windows: https://github.com/kidsanimationjoy-dotcom/fasx/actions/runs/46053683297
-- Android: https://github.com/kidsanimationjoy-dotcom/fasx/actions/runs/46053678041
+## New Windows pairing-security work
 
-## Artifacts
+The branch now includes additional Windows identity and pairing code after the last published client artifact:
+- DPAPI CurrentUser-protected P-256 host identity.
+- In-memory pairing coordinator with P-256 proof-of-possession verification.
+- DPAPI-protected trusted-device registry and Windows pairing service.
+- New Windows-only unit tests for identity, registry persistence, and pairing-service restart/revocation.
 
-- Windows: `FASX-Windows-Foundation-win-x64`
-- Android: `FASX-Android-Foundation-debug`
+These newest changes are awaiting their own CI run. Do not use the earlier Windows artifact as if it contained the new identity/registry code.
 
-These are development preview builds, not production releases. GitHub Actions artifacts are temporary and expire according to the expiry shown by GitHub.
+## Current artifacts
 
-## What can be tested now
+The earlier foundation artifacts remain development previews:
+- Windows: FASX-Windows-Foundation-win-x64.
+- Android: FASX-Android-Foundation-debug.
+
+They do not yet implement a live network pairing or remote desktop connection.
+
+## What can be tested in the earlier foundation build
 
 ### Windows
-- Launch the visible FASX Windows companion.
-- Inspect read-only local PC Health fields: Windows version, processor count, physical memory, system-drive capacity/free space, battery state and uptime.
+- Visible FASX companion window.
+- Read-only local PC Health: Windows version, processor count, memory, system-drive space, battery and uptime.
 - Refresh local health values.
 
 ### Android
-- Open the Home, Devices and Security tabs.
-- Select one of the five SmartDeck experience profiles.
-- Open Customize to show/hide cards and move them up/down.
-- Close and reopen the app to verify that the selected profile and layout remain saved locally.
-- Open the pairing information dialog. It clearly reports that pairing is not connected yet.
+- Home, Devices and Security tabs.
+- SmartDeck experience profiles.
+- Hide/show cards and reorder cards.
+- Layout saved locally on the phone.
+- Pairing dialog clearly states that no connection is active.
 
 ## Not implemented yet
 
-- QR pairing in the actual apps.
-- Authenticated signaling or device-key proof.
-- Durable trusted-device registry.
+- HTTP signaling service or authenticated network pairing.
+- QR rendering/scanning.
+- Android Keystore-backed device identity.
 - Phone-to-Windows connection.
 - Live screen streaming.
 - Remote mouse/keyboard.
@@ -45,4 +50,4 @@ These are development preview builds, not production releases. GitHub Actions ar
 - Remote power actions or audio.
 - Physical-device end-to-end test.
 
-The Windows and Android builds are successfully compiled foundation previews. Passing CI does not mean the remote-control system is complete.
+CI passing means the code compiled and tests passed on the runner. It does not mean the remote-control system is complete.

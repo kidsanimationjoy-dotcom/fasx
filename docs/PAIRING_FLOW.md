@@ -2,9 +2,9 @@
 
 ## Status
 
-The pairing coordinator is an in-memory domain service with unit tests. The Windows companion creates and persists a stable P-256 device identity protected by DPAPI for the current Windows account. The pairing coordinator verifies proof-of-possession signatures from a requesting device.
+The pairing domain coordinator and Windows-side pairing service are implemented with unit tests. The Windows companion also creates a stable P-256 device identity protected with DPAPI for the current Windows account. Approved controller public keys can be stored in a DPAPI-protected trusted-device registry and remain available after the coordinator and application are restarted.
 
-This is not yet connected pairing: HTTP endpoints, QR rendering/scanning, Android key enrollment, durable trusted-device records, and a live phone-to-Windows link are not implemented.
+This is not yet connected pairing: HTTP endpoints, QR rendering/scanning, Android key enrollment, and a live phone-to-Windows connection are not implemented. The pairing service is currently an in-process application service with no network listener.
 
 ## Intended journey
 
@@ -15,8 +15,9 @@ This is not yet connected pairing: HTTP endpoints, QR rendering/scanning, Androi
 5. Android submits the invitation secret, device ID, display name, public key and signature.
 6. Windows validates the key and proof, then displays the requesting device identity.
 7. The local Windows user approves or denies.
-8. Approval establishes device trust only. Every later remote session still requires its own capability approval.
-9. The owner can revoke a paired phone.
+8. The Windows pairing service persists the approved phone's public key and metadata in the DPAPI-protected trusted-device registry.
+9. Approval establishes device trust only. Every later remote session still requires its own capability approval.
+10. The owner can revoke a paired phone; revocation is persisted.
 
 ## Canonical proof-of-possession payload
 
@@ -39,10 +40,10 @@ FASX-PAIRING-REQUEST-V1
 
 The shared .NET implementation is PairingProof.CreatePayload.
 
-## Implemented domain rules
+## Implemented domain and persistence rules
 
-- Invitation secret has 256 bits of random entropy.
-- Only the secret hash is retained by the coordinator.
+- Offer secret has 256 bits of random entropy.
+- Only the secret hash is kept in the coordinator.
 - Secret comparison is constant-time.
 - Public keys must parse as P-256 SubjectPublicKeyInfo.
 - Requesting device must prove possession of its private key.
@@ -50,13 +51,14 @@ The shared .NET implementation is PairingProof.CreatePayload.
 - The first valid request consumes the secret; reuse, denial or expiry is rejected.
 - Only the host that created the invitation can approve or deny it.
 - Display names and signature lengths are validated.
-- Trusted devices are scoped to their host in the in-memory coordinator.
-- Windows host private key is protected with DPAPI CurrentUser. Damaged identity data is not silently replaced.
-- Automated tests cover replay, expiry, host approval, denial, revocation, invalid keys, invalid proofs and identity persistence.
+- Windows host private key is protected with DPAPI CurrentUser; damaged identity data is not silently replaced.
+- Approved controller public keys and device metadata are stored in a DPAPI CurrentUser-protected registry.
+- Trusted-device records are scoped by host ID, validated on load, and can be revoked persistently.
+- The Windows pairing service rolls back its in-memory trusted-device entry if persistence fails.
+- Automated tests cover identity persistence/signing, damaged storage, proof verification, replay, expiry, approval, denial, persistence across service restart, and revocation.
 
 ## Production gaps
 
-- Persist trusted phone records in protected storage.
 - Add authenticated HTTPS signaling endpoints.
 - Add Android Keystore-backed P-256 identity and enrollment.
 - Add Windows QR rendering and Android QR scanning.
