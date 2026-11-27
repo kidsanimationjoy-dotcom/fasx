@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; media-src blob:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>FASX Remote View</title>
+  <style>
+    :root { color-scheme: dark; font-family: Arial, sans-serif; background: #080d18; color: #f3f6ff; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 8px; }
+    #status { color: #9eabc3; font-size: 12px; margin: 4px 0 8px; }
+    video { width: 100%; max-height: 70vh; min-height: 200px; object-fit: contain; background: #02050b; border-radius: 12px; }
+    .hint { color: #8190aa; font-size: 10px; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div id="status" role="status" aria-live="polite">Waiting for the approved Windows screen stream…</div>
+  <video id="remoteVideo" autoplay playsinline></video>
+  <div class="hint">View-only session. This page does not send keyboard or pointer input.</div>
+  <script src="remote-view.js"></script>
+</body>
+</html>
