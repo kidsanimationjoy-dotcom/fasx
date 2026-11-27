@@ -1,6 +1,10 @@
 package com.fasx.mobile
 
 import android.os.Bundle
+import android.webkit.JavascriptInterface
+import android.webkit.WebChromeClient
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -35,6 +39,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -49,6 +54,8 @@ class MainActivity : ComponentActivity() {
     private var uiStatus by mutableStateOf("No computer paired.")
     private var pendingInvite by mutableStateOf<PairingInvite?>(null)
     private var pendingViewInvite by mutableStateOf<ViewSessionInvite?>(null)
+    private var activeViewInvite by mutableStateOf<ViewSessionInvite?>(null)
+    private var viewOfferSdp by mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -58,6 +65,10 @@ class MainActivity : ComponentActivity() {
                     statusText = uiStatus,
                     pendingInvite = pendingInvite,
                     pendingViewInvite = pendingViewInvite,
+                    viewOfferSdp = viewOfferSdp,
+                    onSubmitViewAnswer = { sdp -> submitViewSessionAnswer(sdp) },
+                    onRemoteViewStatus = { message -> updateUiStatus(message) },
+                    onStopViewing = { stopViewing() },
                     onScanInvitation = { scanInvitation() },
                     onConfirmPairing = { invite ->
                         pendingInvite = null
@@ -268,8 +279,44 @@ class MainActivity : ComponentActivity() {
                         "AwaitingLocalApproval" ->
                             updateUiStatus("Waiting for the Windows user to approve View screen only.")
                         "Approved" -> {
-                            updateUiStatus("View-only session authorized. Screen streaming is the next connection step.")
-                            return@execute
+                            updateUiStatus("Windows approved View screen. Waiting for the screen stream…")
+                            val offerRequest = Request.Builder()
+                                .url(invite.endpoint.resolve("/api/view/offer/${invite.sessionId}").toString())
+                                .header("X-FASX-Session-Token", invite.secret)
+                                .get()
+                                .build()
+
+                            val offerResult = client.newCall(offerRequest).execute().use { response ->
+                                if (response.code == 401) {
+                                    throw IllegalStateException("The view-session token was rejected.")
+                                }
+                                if (!response.isSuccessful) {
+                                    throw IllegalStateException("Could not retrieve the screen offer (HTTP ${response.code}).")
+                                }
+                                JSONObject(response.body?.string().orEmpty())
+                            }
+
+                            when (offerResult.optString("status")) {
+                                "OfferReady" -> {
+                                    val sdp = offerResult.getString("sdp")
+                                    runOnUiThread {
+                                        activeViewInvite = invite
+                                        viewOfferSdp = sdp
+                                        uiStatus = "Screen offer received. Establishing the view-only connection…"
+                                    }
+                                    return@execute
+                                }
+                                "WaitingForScreen" ->
+                                    updateUiStatus("View screen is approved. Start screen sharing on the Windows computer.")
+                                "Expired", "Revoked", "Cancelled" -> {
+                                    updateUiStatus("The Windows view-session permission has ended.")
+                                    return@execute
+                                }
+                                "Denied" -> {
+                                    updateUiStatus("The Windows user denied the view-only request.")
+                                    return@execute
+                                }
+                            }
                         }
                         "Denied" -> {
                             updateUiStatus("The Windows user denied the view-session request.")
@@ -294,6 +341,55 @@ class MainActivity : ComponentActivity() {
                 updateUiStatus("View-session request failed: " + (error.message ?: "Unknown error"))
             }
         }
+    }
+
+    private fun submitViewSessionAnswer(sdp: String) {
+        val invite = activeViewInvite ?: return
+        networkExecutor.execute {
+            try {
+                val client = PinnedHttpClient.create(
+                    PairingInvite(
+                        pairingId = invite.sessionId,
+                        secret = invite.secret,
+                        endpoint = invite.endpoint,
+                        tlsPin = invite.tlsPin,
+                        expiresAt = invite.expiresAt
+                    )
+                )
+                val body = JSONObject()
+                    .put("sessionId", invite.sessionId)
+                    .put("secret", invite.secret)
+                    .put("sdp", sdp)
+                    .toString()
+                    .toRequestBody("application/json; charset=utf-8".toMediaType())
+
+                val request = Request.Builder()
+                    .url(invite.endpoint.resolve("/api/view/answer/${invite.sessionId}").toString())
+                    .post(body)
+                    .build()
+
+                client.newCall(request).execute().use { response ->
+                    if (response.code != 202) {
+                        val errorText = response.body?.string().orEmpty()
+                        val message = runCatching {
+                            JSONObject(errorText).optString("error")
+                        }.getOrNull().orEmpty()
+                        throw IllegalStateException(
+                            message.ifBlank { "The Windows computer rejected the WebRTC answer (HTTP ${response.code})." }
+                        )
+                    }
+                }
+                updateUiStatus("Phone answer sent securely. Connecting the video stream…")
+            } catch (error: Exception) {
+                updateUiStatus("Could not send the view-session answer: " + (error.message ?: "Unknown error"))
+            }
+        }
+    }
+
+    private fun stopViewing() {
+        viewOfferSdp = null
+        activeViewInvite = null
+        uiStatus = "View-only connection closed on this phone."
     }
 
     private fun updateUiStatus(message: String) {
@@ -326,6 +422,10 @@ private fun FasxHome(
     statusText: String,
     pendingInvite: PairingInvite?,
     pendingViewInvite: ViewSessionInvite?,
+    viewOfferSdp: String?,
+    onSubmitViewAnswer: (String) -> Unit,
+    onRemoteViewStatus: (String) -> Unit,
+    onStopViewing: () -> Unit,
     onScanInvitation: () -> Unit,
     onConfirmPairing: (PairingInvite) -> Unit,
     onConfirmViewSession: (ViewSessionInvite) -> Unit,
@@ -446,6 +546,85 @@ private fun FasxHome(
                 }
             }
 
+            if (viewOfferSdp != null) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF141D30)),
+                    shape = RoundedCornerShape(18.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text("REMOTE SCREEN", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF9CAAC4))
+                        AndroidView(
+                            factory = { context ->
+                                WebView(context).apply {
+                                    settings.javaScriptEnabled = true
+                                    settings.domStorageEnabled = false
+                                    webChromeClient = WebChromeClient()
+                                    val state = RemoteViewWebState()
+                                    tag = state
+
+                                    addJavascriptInterface(object {
+                                        @JavascriptInterface
+                                        fun submitAnswer(sdp: String) {
+                                            onSubmitViewAnswer(sdp)
+                                        }
+
+                                        @JavascriptInterface
+                                        fun reportStatus(message: String) {
+                                            onRemoteViewStatus(message)
+                                        }
+                                    }, "Fasx")
+
+                                    webViewClient = object : WebViewClient() {
+                                        override fun onPageFinished(view: WebView?, url: String?) {
+                                            state.pageLoaded = true
+                                            val pending = state.pendingOfferSdp
+                                            if (pending != null && state.lastOfferSdp != pending) {
+                                                evaluateJavascript(
+                                                    "window.startFasxRemoteView(${JSONObject.quote(pending)})",
+                                                    null
+                                                )
+                                                state.lastOfferSdp = pending
+                                            }
+                                        }
+                                    }
+                                    loadUrl("file:///android_asset/remote-view.html")
+                                }
+                            },
+                            update = { webView ->
+                                val state = webView.tag as? RemoteViewWebState
+                                if (state != null) {
+                                    state.pendingOfferSdp = viewOfferSdp
+                                    if (state.pageLoaded &&
+                                        viewOfferSdp != null &&
+                                        state.lastOfferSdp != viewOfferSdp
+                                    ) {
+                                        webView.evaluateJavascript(
+                                            "window.startFasxRemoteView(${JSONObject.quote(viewOfferSdp)})",
+                                            null
+                                        )
+                                        state.lastOfferSdp = viewOfferSdp
+                                    }
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(250.dp),
+                            onRelease = { webView ->
+                                webView.evaluateJavascript("window.stopFasxRemoteView?.()", null)
+                                webView.destroy()
+                            }
+                        )
+                        TextButton(onClick = onStopViewing) {
+                            Text("Stop viewing")
+                        }
+                    }
+                }
+            }
+
             Text(
                 "YOUR SMARTDECK",
                 fontSize = 11.sp,
@@ -483,4 +662,10 @@ private fun FasxHome(
             )
         }
     }
+}
+
+private class RemoteViewWebState {
+    var pageLoaded: Boolean = false
+    var pendingOfferSdp: String? = null
+    var lastOfferSdp: String? = null
 }
