@@ -22,18 +22,28 @@
 - [x] Android pinned HTTPS submission and status polling.
 - [x] Windows pending-device approval UI.
 - [x] Tests for proof validation, one-time use, expiry, denial, revocation, cancellation, persistence seam, and concurrent claims.
-- [ ] CI build pass recorded for Windows and Android.
+- [x] GitHub Actions Windows build/tests and self-contained artifact passed.
+- [x] GitHub Actions Android debug APK build and artifact passed.
 - [ ] Real Windows + Android same-network test.
 - [ ] Windows Defender Firewall behaviour reviewed and documented.
 - [ ] Installer/package for the host and debug/release package for Android.
 
 ## Milestone 2 — First real remote session
-- WebRTC proof of concept.
-- Windows system capture picker integration.
-- Android session UI.
-- Screen view only, before remote input.
-- Clear active-session indicator and local stop.
-- Direct LAN test plus relay fallback test.
+**Status: local Windows capture preview added; remote streaming remains open.**
+- [x] WebView2 local screen-capture preview using `getDisplayMedia()`.
+- [x] System-owned screen/window selection and visible Windows capture indication.
+- [x] Local Stop action and capture end handling.
+- [ ] Run the screen preview on a real supported Windows laptop.
+- [ ] Select and license-review a maintained WebRTC implementation.
+- [ ] Authenticated session request from a paired Android device.
+- [ ] Windows-local approval for ViewScreen.
+- [ ] Android screen-view receiver.
+- [ ] Exchange WebRTC offer/answer and ICE candidates over pinned signaling.
+- [ ] Screen view only; no remote input in this milestone.
+- [ ] Clear active-session indicator and local Stop on Windows.
+- [ ] Direct LAN test and network-interruption handling.
+- [ ] TURN relay fallback test for later internet access.
+
 
 ## Milestone 3 — Input and connection quality
 - Remote touchpad and keyboard under separate permission.
