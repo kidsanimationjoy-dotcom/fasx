@@ -191,16 +191,16 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
                     return Results.NotFound(new { error = "View-session request was not found." });
                 }
 
-                if (!authorization.HasPermission(sessionId, SessionPermission.ViewScreen, DateTimeOffset.UtcNow))
-                {
-                    var state = authorization.GetStatus(sessionId, DateTimeOffset.UtcNow);
-                    return Results.Json(new { status = state.ToString() }, options: JsonOptions);
-                }
-
                 var sessionToken = context.Request.Headers["X-FASX-Session-Token"].ToString();
                 if (!server.IsSessionTokenValid(sessionId, sessionToken))
                 {
                     return Results.Unauthorized();
+                }
+
+                if (!authorization.HasPermission(sessionId, SessionPermission.ViewScreen, DateTimeOffset.UtcNow))
+                {
+                    var state = authorization.GetStatus(sessionId, DateTimeOffset.UtcNow);
+                    return Results.Json(new { status = state.ToString() }, options: JsonOptions);
                 }
 
                 var offer = server.GetHostOfferForPhone(sessionId, DateTimeOffset.UtcNow);
