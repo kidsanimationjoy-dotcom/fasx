@@ -93,6 +93,15 @@
                                FontSize="12"
                                Margin="0,8,0,10"
                                TextWrapping="Wrap" />
+                    <Button x:Name="StartStreamButton"
+                            Content="Start screen sharing…"
+                            Click="StartStream_Click"
+                            Padding="11,8"
+                            Margin="0,0,0,10"
+                            Background="#3978E8"
+                            Foreground="White"
+                            FontWeight="SemiBold"
+                            Visibility="Collapsed" />
                     <StackPanel x:Name="ApprovalButtons" Orientation="Horizontal" Visibility="Collapsed">
                         <Button Content="Approve View screen"
                                 Click="ApproveView_Click"
