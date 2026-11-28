@@ -478,6 +478,114 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun sendFileToComputer(uri: Uri) {
+        val invite = activeViewInvite
+        if (invite == null || !fileTransferAllowed) {
+            updateUiStatus("File transfer is not approved for the current session.")
+            return
+        }
+
+        updateUiStatus("Preparing the selected file for secure transfer…")
+        networkExecutor.execute {
+            var temporaryFile: File? = null
+            try {
+                val displayName = contentResolver.query(
+                    uri,
+                    arrayOf(OpenableColumns.DISPLAY_NAME),
+                    null,
+                    null,
+                    null
+                )?.use { cursor ->
+                    if (cursor.moveToFirst()) {
+                        val column = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                        if (column >= 0) cursor.getString(column) else null
+                    } else null
+                }?.takeIf { it.isNotBlank() } ?: "FASX-upload.bin"
+
+                require(displayName.length <= 120 && displayName != "." && displayName != "..") {
+                    "The selected file name is too long or invalid."
+                }
+
+                temporaryFile = File(cacheDir, "fasx-upload-${UUID.randomUUID()}.part")
+                val digest = MessageDigest.getInstance("SHA-256")
+                var totalBytes = 0L
+                val maximumBytes = 20L * 1024 * 1024
+
+                val input = contentResolver.openInputStream(uri)
+                    ?: throw IllegalStateException("Android could not open the selected file.")
+                input.use { source ->
+                    FileOutputStream(temporaryFile).use { target ->
+                        val buffer = ByteArray(64 * 1024)
+                        while (true) {
+                            val read = source.read(buffer)
+                            if (read < 0) break
+                            totalBytes += read
+                            require(totalBytes <= maximumBytes) {
+                                "Files must be 20 MB or smaller."
+                            }
+                            digest.update(buffer, 0, read)
+                            target.write(buffer, 0, read)
+                        }
+                        target.flush()
+                        target.fd.sync()
+                    }
+                }
+
+                require(totalBytes > 0) { "Empty files cannot be transferred." }
+
+                val sha256 = digest.digest().joinToString("") { byte ->
+                    "%02x".format(byte.toInt() and 0xff)
+                }
+                val encodedName = Base64.encodeToString(
+                    displayName.toByteArray(Charsets.UTF_8),
+                    Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP
+                )
+                val uploadUrl = invite.endpoint.resolve(
+                    "/api/files/upload/${invite.sessionId}?name=$encodedName&sha256=$sha256"
+                ).toString()
+
+                val client = PinnedHttpClient.create(
+                    PairingInvite(
+                        pairingId = invite.sessionId,
+                        secret = invite.secret,
+                        endpoint = invite.endpoint,
+                        tlsPin = invite.tlsPin,
+                        expiresAt = invite.expiresAt
+                    )
+                )
+                val request = Request.Builder()
+                    .url(uploadUrl)
+                    .header("X-FASX-Session-Token", invite.secret)
+                    .put(temporaryFile.asRequestBody("application/octet-stream".toMediaType()))
+                    .build()
+
+                client.newCall(request).execute().use { response ->
+                    val responseText = response.body?.string().orEmpty()
+                    if (!response.isSuccessful) {
+                        val detail = runCatching {
+                            JSONObject(responseText).optString("error")
+                        }.getOrNull().orEmpty()
+                        throw IllegalStateException(
+                            detail.ifBlank { "The Windows computer rejected the file (HTTP ${response.code})." }
+                        )
+                    }
+                    val result = JSONObject(responseText)
+                    updateUiStatus(
+                        "File received by Windows: " +
+                            result.optString("fileName", displayName) +
+                            " (${result.optLong("bytes", totalBytes)} bytes)."
+                    )
+                }
+            } catch (error: Exception) {
+                updateUiStatus("File transfer failed: " + (error.message ?: "Unknown error"))
+            } finally {
+                temporaryFile?.let { file ->
+                    try { file.delete() } catch (_: SecurityException) { }
+                }
+            }
+        }
+    }
+
     private fun stopViewing() {
         viewOfferSdp = null
         remoteControlAllowed = false
