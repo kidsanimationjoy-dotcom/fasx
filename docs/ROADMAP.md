@@ -86,7 +86,7 @@
 - [ ] Deck Gallery templates.
 
 ## Milestone 6 — FASX Flows and Intelligence
-**Status: local Windows Flows v1 implemented in source; fresh CI validation pending.**
+**Status: local Windows Flows v1 implemented; Windows Release build/tests/publish and Android debug APK assembly passed on commit `a59722d49cccae7b7e3927d189b0e286ae998979`; physical-device tests for remote features remain pending.**
 - [x] Local Windows flow builder with registered typed actions.
 - [x] Local JSON storage with limits of 20 flows, 8 steps per flow and 64 KB total.
 - [x] Open a fixed allowlist of built-in apps, open HTTPS websites, and choose/open a folder at run time.
