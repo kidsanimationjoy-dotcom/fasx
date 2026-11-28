@@ -49,8 +49,8 @@
                             <TextBlock Text="• View the selected display/window" Margin="0,8,0,0" FontSize="13" />
                             <TextBlock Text="Not included" FontWeight="SemiBold" Foreground="#F2C477" Margin="0,16,0,0" />
                             <TextBlock Text="• Remote input unless separately requested and approved" Margin="0,8,0,0" FontSize="13" TextWrapping="Wrap" />
-                            <TextBlock Text="• Files, clipboard, audio or commands" Margin="0,4,0,0" FontSize="13" />
-                            <TextBlock Text="• Shutdown, restart or other power actions" Margin="0,4,0,0" FontSize="13" TextWrapping="Wrap" />
+                            <TextBlock Text="• Phone-to-PC files only if separately approved with a chosen folder" Margin="0,4,0,0" FontSize="13" TextWrapping="Wrap" />
+                            <TextBlock Text="• Clipboard, audio, shell commands or power actions" Margin="0,4,0,0" FontSize="13" TextWrapping="Wrap" />
                         </StackPanel>
                     </Border>
                     <CheckBox x:Name="RequestControlInputCheckBox"
@@ -60,6 +60,13 @@
                     </CheckBox>
                     <TextBlock Text="Control is optional and still needs a separate approval on this computer."
                                Foreground="#AAB6CC" FontSize="11" Margin="0,5,0,0" TextWrapping="Wrap" />
+                    <CheckBox x:Name="RequestFileTransferCheckBox"
+                              Margin="0,12,0,0"
+                              Foreground="#F4F7FF">
+                        <TextBlock Text="Let this phone request permission to send files to this computer" TextWrapping="Wrap" FontSize="12" />
+                    </CheckBox>
+                    <TextBlock Text="File transfer is phone-to-PC only, up to 20 MB per file, and requires a destination folder chosen here."
+                               Foreground="#AAB6CC" FontSize="10" Margin="0,5,0,0" TextWrapping="Wrap" />
                     <Button x:Name="CreateInviteButton"
                             Content="Create session invitation"
                             Click="CreateInvite_Click"
@@ -107,6 +114,13 @@
                               Margin="0,0,0,10">
                         <TextBlock Text="Also approve pointer and basic navigation keys" TextWrapping="Wrap" FontSize="12" />
                     </CheckBox>
+                    <CheckBox x:Name="ApproveFileTransferCheckBox"
+                              Visibility="Collapsed"
+                              IsChecked="False"
+                              Foreground="#F4F7FF"
+                              Margin="0,0,0,10">
+                        <TextBlock Text="Also approve phone-to-PC file transfer to a folder I select" TextWrapping="Wrap" FontSize="12" />
+                    </CheckBox>
                     <Button x:Name="StartStreamButton"
                             Content="Start screen sharing…"
                             Click="StartStream_Click"
@@ -135,7 +149,7 @@
         </Grid>
 
         <TextBlock Grid.Row="3"
-                   Text="Same trusted Wi-Fi only • 2-minute invitation • Local approval required • Stop ends the session"
+                   Text="Same trusted Wi-Fi only • local approval for each capability • Stop revokes the session"
                    Foreground="#AAB6CC"
                    FontSize="10"
                    Margin="2,16,2,0"
