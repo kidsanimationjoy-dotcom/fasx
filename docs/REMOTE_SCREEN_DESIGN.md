@@ -2,7 +2,7 @@
 
 ## Status
 
-**Source implementation:** a view-only, same-LAN WebRTC path is now in the repository. It has separate Windows and Android sender/receiver pages, authenticated session signaling, and local permission checks.
+**Source implementation:** a same-LAN WebRTC screen-view path is in the repository. It includes an optional, separately approved input data channel with Windows-side event validation. CI and real-device verification are still required.
 
 **Release status:** the new Windows/Android CI run and a real-device same-Wi-Fi test are still required. Do not treat the source implementation as a verified remote-desktop release until the Windows companion and Android app are tested together on actual devices.
 
@@ -14,10 +14,10 @@ The Windows sender uses Microsoft Edge WebView2 and the Screen Capture API:
 - The phone must already be paired with the Windows computer.
 - The phone requests a new session by signing a fresh session challenge with the P-256 private key stored in Android Keystore.
 - Windows verifies the signature against that phone's stored paired public key.
-- Windows displays the request and the user must approve **View screen**.
+- Windows displays the request and the user must approve **View screen**. The invitation can optionally request **ControlInput**, but a second Windows checkbox must be selected before input is granted.
 - The Windows user must then press **Start screen sharing** and choose a display or application window in the system picker.
 - WebView2 raises `ScreenCaptureStarting`; the host window shows capture state.
-- The sender adds only the selected video track to an RTCPeerConnection. It does not add audio or input/data channels.
+- The sender adds only the selected video track to the RTCPeerConnection. It creates a `fasx-control` data channel only when ControlInput is currently approved.
 - Stop, window close, permission expiry, or a disconnected/failed peer tears down the capture and revokes the view permission.
 
 The capture page calls `navigator.mediaDevices.getDisplayMedia()` only from a direct user click. The W3C Screen Capture specification requires a user-agent-controlled display selection each time. References:
@@ -31,12 +31,13 @@ The Android app loads a bundled local WebView page. It:
 
 - creates an RTCPeerConnection with no public STUN/TURN servers in this LAN-only prototype;
 - adds a receive-only video transceiver;
+- accepts the optional `fasx-control` data channel only when the Windows host has approved ControlInput;
 - applies the Windows offer;
 - creates an SDP answer and waits for ICE candidate gathering to complete;
 - submits the answer over the temporary HTTPS endpoint with the session token;
 - displays the received video track in a local video element.
 
-The Android WebView is not granted camera, microphone, location, or file permissions for this receiver. The viewer page contains no keyboard or pointer event forwarding.
+The Android WebView is not granted camera, microphone, location, or file permissions for this receiver. The viewer page exposes pointer actions, a limited navigation-key allowlist, and short text entry only when the approved input data channel opens.
 
 ## Authenticated view-session signaling
 
@@ -50,7 +51,7 @@ The invitation QR includes:
 - SHA-256 SPKI pin for the temporary host certificate;
 - short expiry.
 
-The phone owner confirms the computer address before sending. The phone signs the challenge using its paired P-256 key. Windows verifies the signature against the paired-device public key and checks the one-time secret. Windows then creates a pending session request for **ViewScreen** only.
+The phone owner confirms the computer address before sending. The phone signs the challenge using its paired P-256 key. Windows verifies the signature against the paired-device public key and checks the one-time secret. Windows then creates a pending request for **ViewScreen**, optionally including **ControlInput** when the Windows owner selected it before creating the invitation.
 
 The session secret is also used as a token for status, offer and answer exchanges. The session request must be locally approved before the offer endpoint returns an SDP offer. The local approval lease is separate from the short request expiry and is limited to 10 minutes.
 
@@ -72,7 +73,7 @@ WebRTC media uses its standardized secure transport. FASX does not invent its ow
 
 ## What is deliberately not included
 
-- Remote keyboard or mouse input.
+- Full keyboard shortcuts or unrestricted system input.
 - Audio.
 - Clipboard synchronization.
 - File transfer.
@@ -80,7 +81,7 @@ WebRTC media uses its standardized secure transport. FASX does not invent its ow
 - Hidden/unattended capture.
 - Internet relay.
 
-Those capabilities require separate permissions and separate design/review. Pairing or approval of ViewScreen never grants ControlInput.
+Limited pointer and key input are now implemented in source under a separate ControlInput permission, but still require CI and physical-device tests. Pairing or approval of ViewScreen never grants ControlInput.
 
 ## Validation required before release
 
@@ -88,8 +89,9 @@ Those capabilities require separate permissions and separate design/review. Pair
 2. Pair the actual phone and Windows laptop on a trusted private Wi-Fi network.
 3. Create a view invitation for that paired phone and confirm the device identity is verified.
 4. Approve View screen locally; verify no offer is returned before approval.
-5. Press Start screen sharing and select a single application window.
-6. Confirm the phone receives the video and no pointer/keyboard control is possible.
-7. Stop from Windows and from Android; verify the peer/capture closes and permission is revoked.
-8. Test wrong session token, wrong key signature, expired request, expired approval, phone disconnect, Windows close, Wi-Fi loss and re-pair.
-9. Measure resolution, frame rate, CPU/GPU use, thermal effect, and mobile data/Wi-Fi use on the target hardware.
+5. Press Start screen sharing and choose the screen in the Windows picker.
+6. Verify viewing works without input when ControlInput is not granted.
+7. Request and separately approve ControlInput; verify only the allowlisted pointer, navigation-key, and printable-text actions work.
+8. Stop from Windows and Android; verify input and capture stop and all permissions are revoked.
+9. Test wrong session token, wrong key signature, expired request, expired approval, phone disconnect, Windows close, Wi-Fi loss and re-pair.
+10. Measure resolution, frame rate, CPU/GPU use, thermal effect, and network use on the target hardware.
