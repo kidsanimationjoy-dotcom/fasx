@@ -45,18 +45,20 @@
 - [ ] Add TURN relay only in a later internet-access milestone after security, hosting and cost review.
 
 ## Milestone 3 — Input and connection quality
-**Status: limited input-control source implementation added; CI and physical-device validation pending.**
+**Status: limited input-control and live local quality metrics implemented; CI passed on commit `c09a5980c3179d36dea578ced7f721d7ac9d8361`; physical-device validation pending.**
 - [x] Optional `ControlInput` request, disabled by default.
 - [x] Separate Windows-local checkbox approval, independent of `ViewScreen` approval.
 - [x] WebRTC data channel created only when the Windows owner grants `ControlInput`.
 - [x] Pointer move, left/right click, bounded scroll, allowlisted navigation keys, and short printable text entry.
 - [x] Windows-side permission check and strict typed input validation on every event.
 - [x] Unit tests for pointer bounds, scroll bounds, key allowlist, and text bounds.
-- [ ] Build and test on Windows/Android CI for this feature branch.
+- [x] Windows Release build, unit tests, self-contained publish and artifact upload.
+- [x] Android debug APK assembly and artifact upload.
 - [ ] Physical-device input tests on the target Windows laptop and Android phone.
 - [ ] Verify pointer mapping on primary monitor, rotation, scaling, and supported screen dimensions.
 - [ ] Test immediate input revocation, disconnect and expiry.
-- [ ] Connection Guardian: latency, stream state, and reconnect behaviour.
+- [x] Connection Guardian displays stream resolution, approximate decoded FPS, received bitrate and WebRTC RTT locally in the Android viewer.
+- [ ] Connection Guardian: reconnect behaviour, recovery state and network history.
 
 ## Milestone 4 — File Bridge and device health
 **Status: local read-only PC Health foundation added; file transfer and richer health intelligence remain.**
