@@ -68,6 +68,15 @@ public partial class MainWindow : Window
         RefreshPairedDeviceCount();
     }
 
+    private void Diagnostics_Click(object sender, RoutedEventArgs e)
+    {
+        var diagnosticsWindow = new DiagnosticsWindow
+        {
+            Owner = this
+        };
+        diagnosticsWindow.ShowDialog();
+    }
+
     private void RefreshPairedDeviceCount()
     {
         if (_pairingCoordinator is not null)
