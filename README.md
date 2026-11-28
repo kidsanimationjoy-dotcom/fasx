@@ -4,7 +4,7 @@
 
 FASX is an all-in-one personal computer command centre combining secure remote desktop, device management, customizable controls, and user-approved automation.
 
- > **Project status: early development.** Same-LAN pairing, WebRTC screen viewing, optional permission-gated input, a customizable Android SmartDeck, local Windows PC Health, local Connection Guardian metrics, and a phone-to-PC File Bridge prototype are in source. The latest branch commit `b26c815ec5f808f68cbcd87f93e7d919aba3a29e` passed Windows Release build, unit tests, self-contained publish, and Android debug APK assembly. Real-device verification, internet relay infrastructure and signed release packages remain outstanding; this is not a production release. Physical-device verification, internet relay infrastructure and signed release packages remain outstanding; this is not a production release.
+ > **Project status: early development.** Same-LAN pairing, WebRTC screen viewing, optional permission-gated input, Android SmartDeck customization, local Windows PC Health, Connection Guardian metrics, phone-to-PC File Bridge v1, and a local Windows FASX Flows editor are implemented in source. Windows Release build/tests/publish and Android debug APK assembly passed on the File Bridge commit `b26c815ec5f808f68cbcd87f93e7d919aba3a29e`; the newer Flows changes still need CI. Real-device verification, internet relay infrastructure and signed release packages remain outstanding; this is not a production release.
 
 ## Product vision
 
@@ -90,6 +90,7 @@ The Android app scans QR pairing or view-session invitations, asks the phone own
 - Local PC Health panel with read-only Windows version, processor count, physical memory, system-drive capacity/free space, .NET version, and uptime. It refreshes only when opened or manually refreshed and does not upload telemetry.
 - Android SmartDeck editor with show/hide cards, reorder controls, locally persisted layout, and clear availability labels for planned modules.
 - File Bridge v1 source: phone user selects one file using Android's system picker; Windows owner separately approves TransferFiles and selects a destination folder; uploads are limited to 20 MB, SHA-256 checked, saved under a sanitized unique name without overwriting existing files, and permission is checked during upload.
+- Local Windows FASX Flows v1: up to 20 locally stored flows with up to 8 typed steps each; actions are limited to Notepad, Calculator, Paint, File Explorer, HTTPS websites, and a user-selected folder. Every run displays a preview and requires Windows confirmation.
 
 **Not implemented yet:**
 - Real phone-to-Windows pairing test.
@@ -97,7 +98,7 @@ The Android app scans QR pairing or view-session invitations, asks the phone own
 - Physical-device verification of pairing, screen streaming, optional input and phone-to-PC File Bridge on the target laptop/phone.
 - Full keyboard shortcuts, arbitrary keys, app automation, Windows-to-phone file transfer, two-way folder browsing and clipboard synchronization.
 - Internet signaling/relay and remote-from-anywhere connections.
-- FASX Flows execution and AI diagnostics.
+- Remote FASX Flows execution from Android, editing existing flows, import/export, custom triggers/cards and AI diagnostics.
 - Advanced Connection Guardian recovery/reconnect behaviour and network history.
 - Remote PC Health data query over the session (current PC Health panel is local to Windows).
 - Signed production installers/packages.
