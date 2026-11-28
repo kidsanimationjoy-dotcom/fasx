@@ -31,6 +31,7 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
     private readonly PairingCoordinator _pairingCoordinator;
     private readonly SessionAuthorizationCoordinator _authorization;
     private readonly PairedDevice _targetDevice;
+    private readonly SessionPermission _requestedPermissions;
     private ViewSessionInvitation? _invitation;
     private byte[]? _secretHash;
     private byte[]? _sessionTokenHash;
@@ -48,7 +49,8 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
         string tlsPin,
         PairingCoordinator pairingCoordinator,
         SessionAuthorizationCoordinator authorization,
-        PairedDevice targetDevice)
+        PairedDevice targetDevice,
+        SessionPermission requestedPermissions)
     {
         _app = app;
         _certificate = certificate;
@@ -57,6 +59,7 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
         _pairingCoordinator = pairingCoordinator;
         _authorization = authorization;
         _targetDevice = targetDevice;
+        _requestedPermissions = requestedPermissions;
     }
 
     public IPAddress HostAddress { get; }
@@ -68,12 +71,22 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
         SessionAuthorizationCoordinator authorization,
         PairedDevice targetDevice,
         IPAddress hostAddress,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        SessionPermission requestedPermissions = SessionPermission.ViewScreen)
     {
         ArgumentNullException.ThrowIfNull(pairingCoordinator);
         ArgumentNullException.ThrowIfNull(authorization);
         ArgumentNullException.ThrowIfNull(targetDevice);
         ArgumentNullException.ThrowIfNull(hostAddress);
+
+        var allowedRequestedPermissions = SessionPermission.ViewScreen | SessionPermission.ControlInput;
+        if (!SessionPermissionPolicy.IsPermissionSetValid(requestedPermissions) ||
+            (requestedPermissions & SessionPermission.ViewScreen) == SessionPermission.None ||
+            (requestedPermissions & ~allowedRequestedPermissions) != SessionPermission.None)
+        {
+            throw new ArgumentOutOfRangeException(nameof(requestedPermissions),
+                "A remote view invitation may request ViewScreen and optionally ControlInput only.");
+        }
 
         if (!IsPrivateIpv4(hostAddress))
         {
@@ -131,7 +144,8 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
                 tlsPin,
                 pairingCoordinator,
                 authorization,
-                targetDevice);
+                targetDevice,
+                requestedPermissions);
 
             app.Use(async (context, next) =>
             {
@@ -171,7 +185,7 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
 
                 return Results.Accepted(
                     $"/api/view/status/{claim.SessionId:D}",
-                    new { status = SessionStatus.AwaitingLocalApproval.ToString(), permission = "ViewScreen" });
+                    new { status = SessionStatus.AwaitingLocalApproval.ToString(), permissions = server._requestedPermissions.ToString() });
             }).RequireRateLimiting("view-request");
 
             app.MapGet("/api/view/status/{sessionId:guid}", (Guid sessionId, HttpContext context) =>
@@ -187,8 +201,15 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
                     return Results.Unauthorized();
                 }
 
-                var status = authorization.GetStatus(sessionId, DateTimeOffset.UtcNow);
-                return Results.Json(new { status = status.ToString(), permission = "ViewScreen" }, options: JsonOptions);
+                var now = DateTimeOffset.UtcNow;
+                var status = authorization.GetStatus(sessionId, now);
+                var controlInputApproved = authorization.HasPermission(sessionId, SessionPermission.ControlInput, now);
+                return Results.Json(new
+                {
+                    status = status.ToString(),
+                    requestedPermissions = server._requestedPermissions.ToString(),
+                    controlInputApproved
+                }, options: JsonOptions);
             }).RequireRateLimiting("view-status");
             app.MapGet("/api/view/offer/{sessionId:guid}", (Guid sessionId, HttpContext context) =>
             {
@@ -211,8 +232,8 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
 
                 var offer = server.GetHostOfferForPhone(sessionId, DateTimeOffset.UtcNow);
                 return offer is null
-                    ? Results.Json(new { status = "WaitingForScreen" }, options: JsonOptions)
-                    : Results.Json(new { status = "OfferReady", sdp = offer }, options: JsonOptions);
+                    ? Results.Json(new { status = "WaitingForScreen", controlInputApproved = authorization.HasPermission(sessionId, SessionPermission.ControlInput, DateTimeOffset.UtcNow) }, options: JsonOptions)
+                    : Results.Json(new { status = "OfferReady", sdp = offer, controlInputApproved = authorization.HasPermission(sessionId, SessionPermission.ControlInput, DateTimeOffset.UtcNow) }, options: JsonOptions);
             }).RequireRateLimiting("view-status");
 
             app.MapPost("/api/view/answer/{sessionId:guid}", async (Guid sessionId, HttpContext context) =>
@@ -369,7 +390,7 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
             var sessionRequest = new SessionRequest(
                 claim.SessionId,
                 _targetDevice.DeviceId,
-                SessionPermission.ViewScreen,
+                _requestedPermissions,
                 _invitation.ExpiresAtUtc);
 
             if (!_authorization.SubmitAuthenticatedRequest(
