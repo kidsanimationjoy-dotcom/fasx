@@ -1,0 +1,158 @@
+<Window x:Class="Fasx.Agent.Windows.ViewSessionWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="FASX — Remote session"
+        Width="900"
+        Height="720"
+        MinWidth="760"
+        MinHeight="620"
+        WindowStartupLocation="CenterOwner"
+        Background="#0B1020"
+        Foreground="#F4F7FF"
+>
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="15" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0">
+            <TextBlock Text="FASX REMOTE" FontSize="11" FontWeight="Bold" Foreground="#8FB7FF" />
+            <TextBlock Text="Create a remote session" FontSize="25" FontWeight="SemiBold" Margin="0,5,0,4" />
+            <TextBlock Text="Only the selected paired phone can request this session. You must approve View screen on this computer."
+                       FontSize="13" Foreground="#AAB6CC" TextWrapping="Wrap" />
+        </StackPanel>
+
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1*" />
+                <ColumnDefinition Width="18" />
+                <ColumnDefinition Width="1*" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Background="#151D32" CornerRadius="20" Padding="22">
+                <StackPanel>
+                    <TextBlock Text="SELECT PAIRED PHONE" FontSize="11" FontWeight="Bold" Foreground="#AAB6CC" />
+                    <ComboBox x:Name="PairedDeviceCombo"
+                              DisplayMemberPath="DeviceName"
+                              SelectionChanged="PairedDeviceCombo_SelectionChanged"
+                              Margin="0,12,0,0"
+                              Padding="10"
+                              Background="#202C45"
+                              Foreground="#101725" />
+                    <TextBlock Text="SESSION PERMISSIONS" FontSize="11" FontWeight="Bold" Foreground="#AAB6CC" Margin="0,24,0,8" />
+                    <Border Background="#202C45" CornerRadius="12" Padding="14">
+                        <StackPanel>
+                            <TextBlock Text="Included" FontWeight="SemiBold" Foreground="#8FE0B1" />
+                            <TextBlock Text="• View the selected display/window" Margin="0,8,0,0" FontSize="13" />
+                            <TextBlock Text="Not included" FontWeight="SemiBold" Foreground="#F2C477" Margin="0,16,0,0" />
+                            <TextBlock Text="• Remote input unless separately requested and approved" Margin="0,8,0,0" FontSize="13" TextWrapping="Wrap" />
+                            <TextBlock Text="• Phone-to-PC files only if separately approved with a chosen folder" Margin="0,4,0,0" FontSize="13" TextWrapping="Wrap" />
+                            <TextBlock Text="• Clipboard, audio, shell commands or power actions" Margin="0,4,0,0" FontSize="13" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                    <CheckBox x:Name="RequestControlInputCheckBox"
+                              Margin="0,14,0,0"
+                              Foreground="#F4F7FF">
+                        <TextBlock Text="Let this phone request pointer and basic keyboard control" TextWrapping="Wrap" FontSize="12" />
+                    </CheckBox>
+                    <TextBlock Text="Control is optional and still needs a separate approval on this computer."
+                               Foreground="#AAB6CC" FontSize="11" Margin="0,5,0,0" TextWrapping="Wrap" />
+                    <CheckBox x:Name="RequestFileTransferCheckBox"
+                              Margin="0,12,0,0"
+                              Foreground="#F4F7FF">
+                        <TextBlock Text="Let this phone request permission to send files to this computer" TextWrapping="Wrap" FontSize="12" />
+                    </CheckBox>
+                    <TextBlock Text="File transfer is phone-to-PC only, up to 20 MB per file, and requires a destination folder chosen here."
+                               Foreground="#AAB6CC" FontSize="10" Margin="0,5,0,0" TextWrapping="Wrap" />
+                    <Button x:Name="CreateInviteButton"
+                            Content="Create session invitation"
+                            Click="CreateInvite_Click"
+                            Margin="0,18,0,0"
+                            Padding="12,11"
+                            Background="#3978E8"
+                            Foreground="White"
+                            FontWeight="SemiBold" />
+                    <Button x:Name="StopSessionButton"
+                            Content="Stop session"
+                            Click="StopSession_Click"
+                            Margin="0,8,0,0"
+                            Padding="11,9"
+                            Background="#26334D"
+                            Foreground="White"
+                            Visibility="Collapsed" />
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Column="2" Background="#151D32" CornerRadius="20" Padding="22">
+                <StackPanel>
+                    <TextBlock Text="ONE-TIME INVITATION" FontSize="11" FontWeight="Bold" Foreground="#AAB6CC" />
+                    <Border Background="White" CornerRadius="16" Padding="10" HorizontalAlignment="Center" Margin="0,16,0,12">
+                        <Image x:Name="ViewQrImage" Width="210" Height="210" Stretch="Uniform" />
+                    </Border>
+                    <TextBlock x:Name="SessionStatusText"
+                               Text="Select a paired phone and create an invitation."
+                               Foreground="#AAB6CC"
+                               FontSize="13"
+                               TextWrapping="Wrap" />
+                    <TextBlock x:Name="SessionEndpointText" Foreground="#8FB7FF" FontSize="12" Margin="0,10,0,0" />
+                    <TextBlock x:Name="SessionExpiryText" Foreground="#AAB6CC" FontSize="11" Margin="0,6,0,0" />
+                    <Separator Margin="0,16,0,12" Background="#34415B" />
+                    <TextBlock Text="LOCAL APPROVAL" FontSize="11" FontWeight="Bold" Foreground="#AAB6CC" />
+                    <TextBlock x:Name="ApprovalDescriptionText"
+                               Text="No phone request received."
+                               Foreground="#AAB6CC"
+                               FontSize="12"
+                               Margin="0,8,0,10"
+                               TextWrapping="Wrap" />
+                    <CheckBox x:Name="ApproveControlInputCheckBox"
+                              Visibility="Collapsed"
+                              IsChecked="False"
+                              Foreground="#F4F7FF"
+                              Margin="0,0,0,10">
+                        <TextBlock Text="Also approve pointer and basic navigation keys" TextWrapping="Wrap" FontSize="12" />
+                    </CheckBox>
+                    <CheckBox x:Name="ApproveFileTransferCheckBox"
+                              Visibility="Collapsed"
+                              IsChecked="False"
+                              Foreground="#F4F7FF"
+                              Margin="0,0,0,10">
+                        <TextBlock Text="Also approve phone-to-PC file transfer to a folder I select" TextWrapping="Wrap" FontSize="12" />
+                    </CheckBox>
+                    <Button x:Name="StartStreamButton"
+                            Content="Start screen sharing…"
+                            Click="StartStream_Click"
+                            Padding="11,8"
+                            Margin="0,0,0,10"
+                            Background="#3978E8"
+                            Foreground="White"
+                            FontWeight="SemiBold"
+                            Visibility="Collapsed" />
+                    <StackPanel x:Name="ApprovalButtons" Orientation="Horizontal" Visibility="Collapsed">
+                        <Button Content="Approve selected permissions"
+                                Click="ApproveView_Click"
+                                Padding="10,8"
+                                Background="#277A55"
+                                Foreground="White"
+                                FontWeight="SemiBold" />
+                        <Button Content="Deny"
+                                Click="DenyView_Click"
+                                Margin="8,0,0,0"
+                                Padding="12,8"
+                                Background="#6D3540"
+                                Foreground="White" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <TextBlock Grid.Row="3"
+                   Text="Same trusted Wi-Fi only • local approval for each capability • Stop revokes the session"
+                   Foreground="#AAB6CC"
+                   FontSize="10"
+                   Margin="2,16,2,0"
+                   TextWrapping="Wrap" />
+    </Grid>
+</Window>
