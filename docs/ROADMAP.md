@@ -45,7 +45,7 @@
 - [ ] Add TURN relay only in a later internet-access milestone after security, hosting and cost review.
 
 ## Milestone 3 — Input and connection quality
-**Status: limited input-control and live local quality metrics implemented; CI passed on commit `c09a5980c3179d36dea578ced7f721d7ac9d8361`; physical-device validation pending.**
+**Status: limited input-control and live local quality metrics implemented; Windows/Android CI passed before the File Bridge source additions; latest branch must be rebuilt; physical-device validation pending.**
 - [x] Optional `ControlInput` request, disabled by default.
 - [x] Separate Windows-local checkbox approval, independent of `ViewScreen` approval.
 - [x] WebRTC data channel created only when the Windows owner grants `ControlInput`.
@@ -61,11 +61,14 @@
 - [ ] Connection Guardian: reconnect behaviour, recovery state and network history.
 
 ## Milestone 4 — File Bridge and device health
-**Status: local read-only PC Health foundation added; file transfer and richer health intelligence remain.**
+**Status: local PC Health and phone-to-PC File Bridge v1 source added; latest CI and physical-device transfer test pending.**
 - [x] Local PC Health window with Windows version, logical processor count, physical memory, system-drive free/total capacity, .NET runtime and uptime.
 - [x] Diagnostics refresh only on opening the panel or pressing Refresh; no telemetry upload.
-- [ ] User-selected folder roots.
-- [ ] Two-way file transfer with integrity checks and cancellation.
+- [x] Windows owner selects one destination folder for a session; phone cannot choose or change the host path.
+- [x] Phone user selects individual files through Android's system document picker.
+- [x] Phone-to-PC upload endpoint with a 20 MB per-file limit, content-length enforcement, SHA-256 integrity verification, safe filename validation, unique no-overwrite save, cancellation cleanup, rate limiting and permission rechecks during upload.
+- [ ] CI validation and physical-device transfer test for this feature branch.
+- [ ] Windows-to-phone transfers and two-way folder browsing.
 - [ ] Battery, disk health, CPU utilization and additional hardware information.
 - [ ] Health summaries with read-only default behaviour.
 
