@@ -21,6 +21,7 @@ public partial class ViewSessionWindow : Window
     private RemoteViewSessionServer? _server;
     private ViewSessionInvitation? _invitation;
     private bool _closing;
+    private SessionPermission _requestedPermissions = SessionPermission.ViewScreen;
 
     public ViewSessionWindow(PairingCoordinator pairingCoordinator)
     {
@@ -72,17 +73,25 @@ public partial class ViewSessionWindow : Window
                     "No private Wi-Fi or Ethernet IPv4 address was found. Connect both devices to a trusted local network.");
             }
 
+            _requestedPermissions = SessionPermission.ViewScreen;
+            if (RequestControlInputCheckBox.IsChecked == true)
+            {
+                _requestedPermissions |= SessionPermission.ControlInput;
+            }
+
             _server = await RemoteViewSessionServer.StartAsync(
                 _pairingCoordinator,
                 _authorization,
                 targetDevice,
-                address);
+                address,
+                requestedPermissions: _requestedPermissions);
 
             _invitation = _server.CreateInvitation(DateTimeOffset.UtcNow);
             var qrPayload = JsonSerializer.Serialize(new
             {
                 v = 1,
                 kind = "fasx-view",
+                controlInputRequested = (_requestedPermissions & SessionPermission.ControlInput) != SessionPermission.None,
                 sessionId = _invitation.SessionId.ToString("D"),
                 secret = _invitation.Secret,
                 nonce = _invitation.Nonce,
@@ -130,7 +139,13 @@ public partial class ViewSessionWindow : Window
             case SessionStatus.AwaitingLocalApproval:
                 StartStreamButton.Visibility = Visibility.Collapsed;
                 SessionStatusText.Text = "A verified request has arrived. Your approval is required.";
-                ApprovalDescriptionText.Text = "The paired phone is requesting View screen only.";
+                ApprovalDescriptionText.Text = (_requestedPermissions & SessionPermission.ControlInput) != SessionPermission.None
+                    ? "The paired phone requests View screen and optional pointer/basic-key input. Choose separately whether to grant input."
+                    : "The paired phone is requesting View screen only.";
+                ApproveControlInputCheckBox.Visibility = (_requestedPermissions & SessionPermission.ControlInput) != SessionPermission.None
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
+                ApproveControlInputCheckBox.IsChecked = false;
                 ApprovalButtons.Visibility = Visibility.Visible;
                 break;
 
@@ -171,16 +186,25 @@ public partial class ViewSessionWindow : Window
 
         try
         {
+            var approvedPermissions = SessionPermission.ViewScreen;
+            if ((_requestedPermissions & SessionPermission.ControlInput) != SessionPermission.None &&
+                ApproveControlInputCheckBox.IsChecked == true)
+            {
+                approvedPermissions |= SessionPermission.ControlInput;
+            }
+
             _authorization.ApproveLocally(
                 _invitation.SessionId,
-                SessionPermission.ViewScreen,
+                approvedPermissions,
                 DateTimeOffset.UtcNow,
                 TimeSpan.FromMinutes(10));
 
             ApprovalButtons.Visibility = Visibility.Collapsed;
             StartStreamButton.Visibility = Visibility.Visible;
             SessionStatusText.Text = "View screen permission approved.";
-            ApprovalDescriptionText.Text = "Only View screen is approved for 10 minutes. The screen stream has not started.";
+            ApprovalDescriptionText.Text = approvedPermissions.HasFlag(SessionPermission.ControlInput)
+                ? "View screen and pointer/basic-key input are approved for 10 minutes. Start screen sharing to begin; use Stop session to revoke both."
+                : "Only View screen is approved for 10 minutes. Remote input is not permitted.";
         }
         catch (Exception exception)
         {
