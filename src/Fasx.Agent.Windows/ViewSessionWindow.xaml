@@ -20,7 +20,7 @@
 
         <StackPanel Grid.Row="0">
             <TextBlock Text="FASX REMOTE" FontSize="11" FontWeight="Bold" Foreground="#8FB7FF" />
-            <TextBlock Text="Create a view-only session" FontSize="25" FontWeight="SemiBold" Margin="0,5,0,4" />
+            <TextBlock Text="Create a remote session" FontSize="25" FontWeight="SemiBold" Margin="0,5,0,4" />
             <TextBlock Text="Only the selected paired phone can request this session. You must approve View screen on this computer."
                        FontSize="13" Foreground="#AAB6CC" TextWrapping="Wrap" />
         </StackPanel>
@@ -42,17 +42,25 @@
                               Padding="10"
                               Background="#202C45"
                               Foreground="#101725" />
-                    <TextBlock Text="VIEW SCREEN PERMISSION" FontSize="11" FontWeight="Bold" Foreground="#AAB6CC" Margin="0,24,0,8" />
+                    <TextBlock Text="SESSION PERMISSIONS" FontSize="11" FontWeight="Bold" Foreground="#AAB6CC" Margin="0,24,0,8" />
                     <Border Background="#202C45" CornerRadius="12" Padding="14">
                         <StackPanel>
                             <TextBlock Text="Included" FontWeight="SemiBold" Foreground="#8FE0B1" />
                             <TextBlock Text="• View the selected display/window" Margin="0,8,0,0" FontSize="13" />
                             <TextBlock Text="Not included" FontWeight="SemiBold" Foreground="#F2C477" Margin="0,16,0,0" />
-                            <TextBlock Text="• Mouse or keyboard control" Margin="0,8,0,0" FontSize="13" />
+                            <TextBlock Text="• Remote input unless separately requested and approved" Margin="0,8,0,0" FontSize="13" TextWrapping="Wrap" />
                             <TextBlock Text="• Files, clipboard or audio" Margin="0,4,0,0" FontSize="13" />
                             <TextBlock Text="• Shutdown, restart or other power actions" Margin="0,4,0,0" FontSize="13" TextWrapping="Wrap" />
                         </StackPanel>
                     </Border>
+                    <CheckBox x:Name="RequestControlInputCheckBox"
+                              Content="Let this phone request pointer and basic keyboard control"
+                              Margin="0,14,0,0"
+                              Foreground="#F4F7FF"
+                              FontSize="12"
+                              TextWrapping="Wrap" />
+                    <TextBlock Text="Control is optional and still needs a separate approval on this computer."
+                               Foreground="#AAB6CC" FontSize="11" Margin="0,5,0,0" TextWrapping="Wrap" />
                     <Button x:Name="CreateInviteButton"
                             Content="Create view invitation"
                             Click="CreateInvite_Click"
@@ -93,6 +101,14 @@
                                FontSize="12"
                                Margin="0,8,0,10"
                                TextWrapping="Wrap" />
+                    <CheckBox x:Name="ApproveControlInputCheckBox"
+                              Content="Also approve pointer and basic navigation keys"
+                              Visibility="Collapsed"
+                              IsChecked="False"
+                              Foreground="#F4F7FF"
+                              FontSize="12"
+                              Margin="0,0,0,10"
+                              TextWrapping="Wrap" />
                     <Button x:Name="StartStreamButton"
                             Content="Start screen sharing…"
                             Click="StartStream_Click"
@@ -103,7 +119,7 @@
                             FontWeight="SemiBold"
                             Visibility="Collapsed" />
                     <StackPanel x:Name="ApprovalButtons" Orientation="Horizontal" Visibility="Collapsed">
-                        <Button Content="Approve View screen"
+                        <Button Content="Approve selected permissions"
                                 Click="ApproveView_Click"
                                 Padding="10,8"
                                 Background="#277A55"
@@ -121,7 +137,7 @@
         </Grid>
 
         <TextBlock Grid.Row="3"
-                   Text="Same trusted Wi-Fi only • 2-minute invitation • View screen only • Capture/stream is a separate next step"
+                   Text="Same trusted Wi-Fi only • 2-minute invitation • Local approval required • Stop ends the session"
                    Foreground="#AAB6CC"
                    FontSize="10"
                    Margin="2,16,2,0"
