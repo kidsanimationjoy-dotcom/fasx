@@ -138,7 +138,7 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                             "flows" -> updateUiStatus(
-                                "FASX Flows is planned. Actions will use registered, user-approved steps rather than arbitrary commands."
+                                "FASX Flows is available on the Windows companion. Flows run locally after a preview and confirmation; remote flow execution from the phone is not enabled."
                             )
                             else -> updateUiStatus("This SmartDeck card is not available.")
                         }
