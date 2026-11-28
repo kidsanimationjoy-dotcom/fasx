@@ -50,7 +50,7 @@
                        VerticalAlignment="Center"
                        TextWrapping="Wrap" />
             <TextBlock DockPanel.Dock="Right"
-                       Text="View screen only • Stop ends capture and revokes permission"
+                       Text="Visible sharing • Stop ends capture and revokes all session permissions"
                        Foreground="#8FB7FF"
                        FontSize="10"
                        Margin="12,0,0,0"
