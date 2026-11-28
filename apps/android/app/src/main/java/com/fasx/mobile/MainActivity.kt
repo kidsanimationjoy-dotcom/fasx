@@ -14,7 +14,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -24,6 +27,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -32,6 +36,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,9 +62,25 @@ class MainActivity : ComponentActivity() {
     private var activeViewInvite by mutableStateOf<ViewSessionInvite?>(null)
     private var viewOfferSdp by mutableStateOf<String?>(null)
     private var remoteControlAllowed by mutableStateOf(false)
+    private val deckCatalog = listOf(
+        DeckModule("connect", "Connect computer", "Scan and pair a Windows computer", "READY"),
+        DeckModule("remote", "Remote Desktop", "Request a screen session from a paired PC", "READY"),
+        DeckModule("touchpad", "Touch Control", "Use approved touch and basic keys during a session", "PERMISSION"),
+        DeckModule("security", "Security Shield", "See pairing and session-safety status", "READY"),
+        DeckModule("pc-health", "PC Health", "Read local diagnostics on the Windows computer", "LOCAL"),
+        DeckModule("file-bridge", "File Bridge", "Move selected files between paired devices", "PLANNED"),
+        DeckModule("flows", "FASX Flows", "Run user-approved one-tap workflows", "PLANNED")
+    )
+    private var visibleDeckIds by mutableStateOf(deckCatalog.map { it.id })
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val preferences = getSharedPreferences("fasx-smartdeck", MODE_PRIVATE)
+        val savedDeck = preferences.getString("visible_ids", null)
+            ?.split("|")
+            ?.filter { id -> deckCatalog.any { it.id == id } }
+            ?.distinct()
+        if (savedDeck != null) visibleDeckIds = savedDeck
         setContent {
             FasxTheme {
                 FasxHome(
@@ -68,6 +89,36 @@ class MainActivity : ComponentActivity() {
                     pendingViewInvite = pendingViewInvite,
                     viewOfferSdp = viewOfferSdp,
                     controlInputAllowed = remoteControlAllowed,
+                    visibleDeckIds = visibleDeckIds,
+                    deckModules = deckCatalog,
+                    onSaveDeck = { ids ->
+                        visibleDeckIds = ids.filter { id -> deckCatalog.any { it.id == id } }.distinct()
+                        preferences.edit().putString("visible_ids", visibleDeckIds.joinToString("|")).apply()
+                    },
+                    onModuleSelected = { id ->
+                        when (id) {
+                            "connect" -> scanInvitation()
+                            "remote" -> scanInvitation()
+                            "touchpad" -> updateUiStatus(
+                                if (viewOfferSdp != null && remoteControlAllowed)
+                                    "Touch controls are shown below the active remote screen."
+                                else
+                                    "Touch controls appear only during a remote session when ControlInput is separately approved on Windows."
+                            )
+                            "security" -> updateUiStatus(
+                                "FASX Security Shield: phone pairing and each remote session require approval on the Windows computer. Screen viewing does not automatically grant input."
+                            )
+                            "pc-health" -> updateUiStatus(
+                                "PC Health runs locally on Windows. Open the PC Health panel on your computer to read its diagnostics."
+                            )
+                            "file-bridge" -> updateUiStatus(
+                                "File Bridge is not enabled yet. It will use user-selected files and a separate transfer permission."
+                            )
+                            "flows" -> updateUiStatus(
+                                "FASX Flows is planned. Actions will use registered, user-approved steps rather than arbitrary commands."
+                            )
+                        }
+                    },
                     onSubmitViewAnswer = { sdp -> submitViewSessionAnswer(sdp) },
                     onRemoteViewStatus = { message -> updateUiStatus(message) },
                     onStopViewing = { stopViewing() },
