@@ -782,8 +782,16 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
         DirectoryInfo? current = new(Path.GetFullPath(directory));
         while (current is not null)
         {
-            current.Refresh();
-            if ((current.Attributes & FileAttributes.ReparsePoint) != 0)
+            try
+            {
+                current.Refresh();
+                if ((current.Attributes & FileAttributes.ReparsePoint) != 0)
+                {
+                    return true;
+                }
+            }
+            catch (Exception exception) when (
+                exception is IOException or UnauthorizedAccessException or System.Security.SecurityException)
             {
                 return true;
             }
