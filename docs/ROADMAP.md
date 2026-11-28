@@ -86,9 +86,16 @@
 - [ ] Deck Gallery templates.
 
 ## Milestone 6 — FASX Flows and Intelligence
-- Visual workflow builder based on registered typed actions.
-- Explicit confirmation gates and run history.
-- Explainable system-health assistant.
+**Status: local Windows Flows v1 implemented in source; fresh CI validation pending.**
+- [x] Local Windows flow builder with registered typed actions.
+- [x] Local JSON storage with limits of 20 flows, 8 steps per flow and 64 KB total.
+- [x] Open a fixed allowlist of built-in apps, open HTTPS websites, and choose/open a folder at run time.
+- [x] Preview and explicit Windows confirmation before every run.
+- [x] Unit tests reject arbitrary executables, scripts, shell commands, non-HTTPS websites and invalid steps.
+- [ ] Edit saved flows and add run history.
+- [ ] Import/export with strict schema validation.
+- [ ] Remote flow execution from the phone only after a separate permission and local approval design.
+- [ ] Explainable system-health assistant and AI diagnostics.
 - No arbitrary scripts or hidden commands.
 
 ## Milestone 7 — Audio, advanced devices, and business
