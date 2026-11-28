@@ -4,7 +4,7 @@
 
 FASX is an all-in-one personal computer command centre combining secure remote desktop, device management, customizable controls, and user-approved automation.
 
-> **Project status: early development.** The repository contains same-LAN phone pairing, a local Windows session-approval gate, and a source implementation of a view-only WebRTC screen stream using the Windows capture picker and an Android receiver. CI and physical-device checks are still required; this is not a production remote-desktop release.
+> **Project status: early development.** The repository contains same-LAN phone pairing, local Windows session approval, WebRTC screen viewing, and an optional permission-gated input data channel. Windows and Android CI plus real-device checks are still required; this is not a production remote-desktop release.
 
 ## Product vision
 
@@ -67,7 +67,7 @@ cd apps/android
 gradle --no-daemon :app:assembleDebug
 ```
 
-The Android app scans QR pairing or view-session invitations, asks the phone owner to confirm the computer address, creates its P-256 signing key in Android Keystore, pins the temporary Windows host certificate, and submits signed requests over HTTPS. A view-only request requires Windows-local approval before a WebRTC offer can be retrieved.
+The Android app scans QR pairing or view-session invitations, asks the phone owner to confirm the computer address, creates its P-256 signing key in Android Keystore, pins the temporary Windows host certificate, and submits signed requests over HTTPS. A remote-session request requires Windows-local approval before a WebRTC offer can be retrieved. Optional input must be separately requested by the Windows owner and separately approved on the Windows computer.
 
 ## Current capabilities and limitations
 
@@ -81,25 +81,28 @@ The Android app scans QR pairing or view-session invitations, asks the phone own
 - Android QR scanner, strict invitation parsing, Android Keystore device identity, pinned HTTPS claim and status polling.
 - Local Windows screen-capture preview using WebView2 and the Windows-owned display/window picker.
 - A signed remote-session request from an already-paired Android device.
-- Windows-local approval for the `ViewScreen` permission with a short, separate session lease.
+- Windows-local approval for `ViewScreen` with a short, separate session lease.
+- Optional `ControlInput` request, followed by a separate explicit checkbox approval on Windows.
 - Token-protected, same-LAN WebRTC offer/answer signaling over the pinned HTTPS session endpoint.
 - Windows WebView2 video sender and Android WebView video receiver. The Windows owner must press Start and choose the screen/window.
+- Optional WebRTC data channel for pointer movement/clicks/scrolling, a limited navigation-key allowlist, and short printable text entry. The Windows host validates every message again and drops input unless `ControlInput` is currently approved.
 
 **Not implemented yet:**
 - Verified CI build or signed installer.
 - Real phone-to-Windows pairing test.
 - Verified real-device screen streaming (the source implementation is present but not yet tested on the target laptop/phone).
-- Remote keyboard/mouse input.
-- File transfer and clipboard synchronization.
-- Internet relay / remote-from-anywhere connections.
-- SmartDeck customization, Flows execution, and AI diagnostics.
+- Physical-device verification of pairing, screen streaming and optional input on the target laptop/phone.
+- Full keyboard shortcuts, arbitrary keys, app automation, file transfer and clipboard synchronization.
+- Internet signaling/relay and remote-from-anywhere connections.
+- SmartDeck customization, FASX Flows execution and AI diagnostics.
+- Signed production installers/packages.
 
 ## Architecture and security
 
 - Windows companion: C# / .NET 10 LTS / WPF.
 - Android client: Kotlin and Jetpack Compose.
 - Local view-session signaling: temporary ASP.NET Core HTTPS endpoint bound to one private IPv4 address.
-- Local media transport: browser-native WebRTC with no STUN/TURN relay in this first LAN-only prototype.
+- Local media and input transport: browser-native WebRTC with no STUN/TURN relay in this first LAN-only prototype.
 - Internet signaling and relay infrastructure are not implemented.
 - Local pairing uses HTTPS with an invitation-bound SHA-256 SPKI pin.
 - Windows device records are protected with DPAPI for the current Windows user.
