@@ -24,7 +24,7 @@
 - [x] Tests for proof validation, one-time use, expiry, denial, revocation, cancellation, persistence seam, and concurrent claims.
 - [x] GitHub Actions Windows Release build, unit tests, self-contained artifact upload.
 - [x] GitHub Actions Android debug APK assembly and artifact upload.
-- [ ] Real Windows + Android same-network test.
+- [ ] Real Windows + Android same-network test, including separately approved input.
 - [ ] Windows Defender Firewall behaviour reviewed on the target setup.
 - [ ] Signed installer/package for the host and signed release package for Android.
 
@@ -42,13 +42,21 @@
 - [ ] Validate candidate gathering and video quality across supported Wi-Fi routers.
 - [ ] Test app backgrounding, phone sleep, Wi-Fi drop and fast reconnect.
 - [ ] Document frame rate, resolution, thermal and network usage on target devices.
-- [ ] Add TURN relay only in a later internet-access milestone after design and cost review.
+- [ ] Add TURN relay only in a later internet-access milestone after security, hosting and cost review.
 
 ## Milestone 3 — Input and connection quality
-- Remote touchpad and keyboard under a separate permission and separate local approval.
-- Input mapping and permission-boundary tests.
-- Connection Guardian: latency, stream state, and reconnect behaviour.
-- Permission revocation and fail-closed testing.
+**Status: limited input-control source implementation added; CI and physical-device validation pending.**
+- [x] Optional `ControlInput` request, disabled by default.
+- [x] Separate Windows-local checkbox approval, independent of `ViewScreen` approval.
+- [x] WebRTC data channel created only when the Windows owner grants `ControlInput`.
+- [x] Pointer move, left/right click, bounded scroll, allowlisted navigation keys, and short printable text entry.
+- [x] Windows-side permission check and strict typed input validation on every event.
+- [x] Unit tests for pointer bounds, scroll bounds, key allowlist, and text bounds.
+- [ ] Build and test on Windows/Android CI for this feature branch.
+- [ ] Physical-device input tests on the target Windows laptop and Android phone.
+- [ ] Verify pointer mapping on primary monitor, rotation, scaling, and supported screen dimensions.
+- [ ] Test immediate input revocation, disconnect and expiry.
+- [ ] Connection Guardian: latency, stream state, and reconnect behaviour.
 
 ## Milestone 4 — File Bridge and device health
 - User-selected folder roots.
