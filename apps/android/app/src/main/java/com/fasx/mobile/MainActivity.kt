@@ -1,12 +1,17 @@
 package com.fasx.mobile
 
+import android.net.Uri
 import android.os.Bundle
+import android.provider.OpenableColumns
+import android.util.Base64
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -50,32 +55,42 @@ import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
+import java.io.File
+import java.io.FileOutputStream
+import java.security.MessageDigest
 import java.time.Instant
+import java.util.UUID
 import java.util.concurrent.Executors
 
 class MainActivity : ComponentActivity() {
     private val networkExecutor = Executors.newSingleThreadExecutor()
+    private lateinit var filePickerLauncher: ActivityResultLauncher<Array<String>>
     private var uiStatus by mutableStateOf("No computer paired.")
     private var pendingInvite by mutableStateOf<PairingInvite?>(null)
     private var pendingViewInvite by mutableStateOf<ViewSessionInvite?>(null)
     private var activeViewInvite by mutableStateOf<ViewSessionInvite?>(null)
     private var viewOfferSdp by mutableStateOf<String?>(null)
     private var remoteControlAllowed by mutableStateOf(false)
+    private var fileTransferAllowed by mutableStateOf(false)
     private val deckCatalog = listOf(
         DeckModule("connect", "Connect computer", "Scan and pair a Windows computer", "READY"),
         DeckModule("remote", "Remote Desktop", "Request a screen session from a paired PC", "READY"),
         DeckModule("touchpad", "Touch Control", "Use approved touch and basic keys during a session", "PERMISSION"),
         DeckModule("security", "Security Shield", "See pairing and session-safety status", "READY"),
         DeckModule("pc-health", "PC Health", "Read local diagnostics on the Windows computer", "LOCAL"),
-        DeckModule("file-bridge", "File Bridge", "Move selected files between paired devices", "PLANNED"),
+        DeckModule("file-bridge", "File Bridge", "Send selected files to an approved Windows folder", "PERMISSION"),
         DeckModule("flows", "FASX Flows", "Run user-approved one-tap workflows", "PLANNED")
     )
     private var visibleDeckIds by mutableStateOf(deckCatalog.map { it.id })
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        filePickerLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri != null) sendFileToComputer(uri)
+        }
         val preferences = getSharedPreferences("fasx-smartdeck", MODE_PRIVATE)
         val savedDeck = preferences.getString("visible_ids", null)
             ?.split("|")
@@ -90,6 +105,7 @@ class MainActivity : ComponentActivity() {
                     pendingViewInvite = pendingViewInvite,
                     viewOfferSdp = viewOfferSdp,
                     controlInputAllowed = remoteControlAllowed,
+                    fileTransferAllowed = fileTransferAllowed,
                     visibleDeckIds = visibleDeckIds,
                     deckModules = deckCatalog,
                     onSaveDeck = { ids ->
@@ -112,9 +128,15 @@ class MainActivity : ComponentActivity() {
                             "pc-health" -> updateUiStatus(
                                 "PC Health runs locally on Windows. Open the PC Health panel on your computer to read its diagnostics."
                             )
-                            "file-bridge" -> updateUiStatus(
-                                "File Bridge is not enabled yet. It will use user-selected files and a separate transfer permission."
-                            )
+                            "file-bridge" -> {
+                                if (activeViewInvite != null && fileTransferAllowed) {
+                                    filePickerLauncher.launch(arrayOf("*/*"))
+                                } else {
+                                    updateUiStatus(
+                                        "File Bridge requires the Windows owner to approve TransferFiles and select a destination folder for this session."
+                                    )
+                                }
+                            }
                             "flows" -> updateUiStatus(
                                 "FASX Flows is planned. Actions will use registered, user-approved steps rather than arbitrary commands."
                             )
@@ -122,6 +144,7 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                     onSubmitViewAnswer = { sdp -> submitViewSessionAnswer(sdp) },
+                    onSendFile = { uri -> sendFileToComputer(uri) },
                     onRemoteViewStatus = { message -> updateUiStatus(message) },
                     onStopViewing = { stopViewing() },
                     onScanInvitation = { scanInvitation() },
@@ -366,6 +389,7 @@ class MainActivity : ComponentActivity() {
                                         activeViewInvite = invite
                                         viewOfferSdp = sdp
                                         remoteControlAllowed = offerResult.optBoolean("controlInputApproved", false)
+                                        fileTransferAllowed = offerResult.optBoolean("fileTransferApproved", false)
                                         uiStatus = if (remoteControlAllowed) {
                                             "Screen offer received. Windows approved view and limited input."
                                         } else {
@@ -457,6 +481,7 @@ class MainActivity : ComponentActivity() {
     private fun stopViewing() {
         viewOfferSdp = null
         remoteControlAllowed = false
+        fileTransferAllowed = false
         activeViewInvite = null
         uiStatus = "View-only connection closed on this phone."
     }
@@ -498,11 +523,13 @@ private fun FasxHome(
     pendingViewInvite: ViewSessionInvite?,
     viewOfferSdp: String?,
     controlInputAllowed: Boolean,
+    fileTransferAllowed: Boolean,
     visibleDeckIds: List<String>,
     deckModules: List<DeckModule>,
     onSaveDeck: (List<String>) -> Unit,
     onModuleSelected: (String) -> Unit,
     onSubmitViewAnswer: (String) -> Unit,
+    onSendFile: (Uri) -> Unit,
     onRemoteViewStatus: (String) -> Unit,
     onStopViewing: () -> Unit,
     onScanInvitation: () -> Unit,
