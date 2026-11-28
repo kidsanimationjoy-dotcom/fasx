@@ -17,6 +17,8 @@ internal static class WindowsInputController
     private const uint KeyUp = 0x0002;
     private const int ScreenWidthMetric = 0;
     private const int ScreenHeightMetric = 1;
+    private const uint InputKeyboard = 1;
+    private const uint KeyUnicode = 0x0004;
 
     private static readonly IReadOnlyDictionary<string, byte> VirtualKeys =
         new Dictionary<string, byte>(StringComparer.Ordinal)
@@ -81,6 +83,15 @@ internal static class WindowsInputController
                     status = "Approved key input received.";
                     return true;
 
+                case "text":
+                    if (!SendUnicodeText(message.Text!))
+                    {
+                        status = "Windows could not inject the approved text.";
+                        return false;
+                    }
+                    status = "Approved text input received.";
+                    return true;
+
                 default:
                     status = "The remote input event type is not supported.";
                     return false;
@@ -103,6 +114,75 @@ internal static class WindowsInputController
         var pixelY = (int)Math.Round(y * (height - 1));
         return SetCursorPos(pixelX, pixelY);
     }
+
+    private static bool SendUnicodeText(string text)
+    {
+        var inputs = new List<InputEvent>(text.Length * 2);
+        foreach (var character in text)
+        {
+            inputs.Add(CreateUnicodeInput(character, KeyUnicode));
+            inputs.Add(CreateUnicodeInput(character, KeyUnicode | KeyUp));
+        }
+
+        var inputArray = inputs.ToArray();
+        return SendInput((uint)inputArray.Length, inputArray, Marshal.SizeOf<InputEvent>()) ==
+               (uint)inputArray.Length;
+    }
+
+    private static InputEvent CreateUnicodeInput(char character, uint flags) =>
+        new()
+        {
+            Type = InputKeyboard,
+            Union = new InputUnion
+            {
+                Keyboard = new KeyboardInput
+                {
+                    VirtualKey = 0,
+                    ScanCode = character,
+                    Flags = flags,
+                    Time = 0,
+                    ExtraInfo = UIntPtr.Zero
+                }
+            }
+        };
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct InputEvent
+    {
+        public uint Type;
+        public InputUnion Union;
+    }
+
+    [StructLayout(LayoutKind.Explicit)]
+    private struct InputUnion
+    {
+        [FieldOffset(0)] public KeyboardInput Keyboard;
+        [FieldOffset(0)] public MouseInput Mouse;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct KeyboardInput
+    {
+        public ushort VirtualKey;
+        public ushort ScanCode;
+        public uint Flags;
+        public uint Time;
+        public UIntPtr ExtraInfo;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MouseInput
+    {
+        public int X;
+        public int Y;
+        public uint MouseData;
+        public uint Flags;
+        public uint Time;
+        public UIntPtr ExtraInfo;
+    }
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern uint SendInput(uint count, [In] InputEvent[] inputs, int size);
 
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
