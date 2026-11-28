@@ -7,6 +7,7 @@ import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -482,7 +483,12 @@ private fun FasxTheme(content: @Composable () -> Unit) {
     MaterialTheme(colorScheme = colors, content = content)
 }
 
-private data class DeckModule(val title: String, val description: String)
+private data class DeckModule(
+    val id: String,
+    val title: String,
+    val description: String,
+    val availability: String
+)
 
 @Composable
 private fun FasxHome(
@@ -491,6 +497,10 @@ private fun FasxHome(
     pendingViewInvite: ViewSessionInvite?,
     viewOfferSdp: String?,
     controlInputAllowed: Boolean,
+    visibleDeckIds: List<String>,
+    deckModules: List<DeckModule>,
+    onSaveDeck: (List<String>) -> Unit,
+    onModuleSelected: (String) -> Unit,
     onSubmitViewAnswer: (String) -> Unit,
     onRemoteViewStatus: (String) -> Unit,
     onStopViewing: () -> Unit,
@@ -499,14 +509,96 @@ private fun FasxHome(
     onConfirmViewSession: (ViewSessionInvite) -> Unit,
     onCancelPairing: () -> Unit
 ) {
-    val modules = listOf(
-        DeckModule("Remote Desktop", "View and control an approved computer"),
-        DeckModule("Touchpad", "Use your phone as a mouse"),
-        DeckModule("File Bridge", "Move files between paired devices"),
-        DeckModule("PC Health", "Understand device status and performance"),
-        DeckModule("SmartDeck", "Build a command centre that suits you"),
-        DeckModule("FASX Flows", "Create approved one-tap workflows")
-    )
+    val modules = deckModules
+    val visibleModules = modules
+        .filter { it.id in visibleDeckIds }
+        .sortedBy { visibleDeckIds.indexOf(it.id) }
+    var showDeckEditor by remember { mutableStateOf(false) }
+    var draftDeckIds by remember(visibleDeckIds) { mutableStateOf(visibleDeckIds) }
+
+    if (showDeckEditor) {
+        AlertDialog(
+            onDismissRequest = { showDeckEditor = false },
+            title = { Text("Customize SmartDeck") },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .heightIn(max = 440.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        "Choose the cards you want on your home screen. Use the arrows to change their order.",
+                        color = Color(0xFF9CAAC4),
+                        fontSize = 12.sp
+                    )
+                    modules.forEach { module ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Checkbox(
+                                checked = module.id in draftDeckIds,
+                                onCheckedChange = { checked ->
+                                    draftDeckIds = if (checked) {
+                                        draftDeckIds + module.id
+                                    } else {
+                                        draftDeckIds - module.id
+                                    }
+                                }
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(module.title, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                Text(module.description, color = Color(0xFF9CAAC4), fontSize = 10.sp)
+                            }
+                            TextButton(
+                                enabled = module.id in draftDeckIds && draftDeckIds.indexOf(module.id) > 0,
+                                onClick = {
+                                    val mutable = draftDeckIds.toMutableList()
+                                    val index = mutable.indexOf(module.id)
+                                    if (index > 0) {
+                                        val previous = mutable[index - 1]
+                                        mutable[index - 1] = mutable[index]
+                                        mutable[index] = previous
+                                        draftDeckIds = mutable
+                                    }
+                                }
+                            ) { Text("↑") }
+                            TextButton(
+                                enabled = module.id in draftDeckIds &&
+                                    draftDeckIds.indexOf(module.id) < draftDeckIds.lastIndex,
+                                onClick = {
+                                    val mutable = draftDeckIds.toMutableList()
+                                    val index = mutable.indexOf(module.id)
+                                    if (index >= 0 && index < mutable.lastIndex) {
+                                        val next = mutable[index + 1]
+                                        mutable[index + 1] = mutable[index]
+                                        mutable[index] = next
+                                        draftDeckIds = mutable
+                                    }
+                                }
+                            ) { Text("↓") }
+                        }
+                    }
+                    if (draftDeckIds.isEmpty()) {
+                        Text("Choose at least one card before saving.", color = Color(0xFFFFC66D), fontSize = 11.sp)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = draftDeckIds.isNotEmpty(),
+                    onClick = {
+                        onSaveDeck(draftDeckIds)
+                        showDeckEditor = false
+                    }
+                ) { Text("Save SmartDeck") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeckEditor = false }) { Text("Cancel") }
+            }
+        )
+    }
 
     if (pendingInvite != null) {
         AlertDialog(
@@ -708,23 +800,38 @@ private fun FasxHome(
                 }
             }
 
-            Text(
-                "YOUR SMARTDECK",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF9CAAC4)
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "YOUR SMARTDECK",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF9CAAC4)
+                )
+                TextButton(onClick = {
+                    draftDeckIds = visibleDeckIds
+                    showDeckEditor = true
+                }) { Text("Customize") }
+            }
+            if (visibleModules.isEmpty()) {
+                Text("Your SmartDeck is empty. Open Customize to add cards.", color = Color(0xFF9CAAC4), fontSize = 12.sp)
+            }
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(modules) { module ->
+                items(visibleModules) { module ->
                     Card(
                         colors = CardDefaults.cardColors(containerColor = Color(0xFF141D30)),
                         shape = RoundedCornerShape(18.dp),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onModuleSelected(module.id) }
                     ) {
                         Column(
                             modifier = Modifier.padding(15.dp),
@@ -732,14 +839,28 @@ private fun FasxHome(
                         ) {
                             Text(module.title, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                             Text(module.description, color = Color(0xFF9CAAC4), fontSize = 11.sp)
-                            Text("Awaiting remote-session milestone", color = Color(0xFF7794C7), fontSize = 10.sp)
+                            Text(
+                                when (module.availability) {
+                                    "READY" -> "AVAILABLE • TAP TO OPEN"
+                                    "PERMISSION" -> "REQUIRES SESSION PERMISSION"
+                                    "LOCAL" -> "AVAILABLE ON WINDOWS"
+                                    else -> "PLANNED MODULE"
+                                },
+                                color = when (module.availability) {
+                                    "READY" -> Color(0xFF79D6A4)
+                                    "PERMISSION" -> Color(0xFFFFC66D)
+                                    else -> Color(0xFF7794C7)
+                                },
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
                 }
             }
 
             Text(
-                "LAN pairing preview • Remote control is not active in this build.",
+                "SmartDeck settings are saved on this phone. Remote actions still require session permission on Windows.",
                 color = Color(0xFF8190AA),
                 fontSize = 10.sp
             )
