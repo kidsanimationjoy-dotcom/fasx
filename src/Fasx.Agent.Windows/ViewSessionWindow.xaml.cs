@@ -215,7 +215,9 @@ public partial class ViewSessionWindow : Window
                 if (folderDialog.ShowDialog(this) == true)
                 {
                     transferFolder = folderDialog.FolderName;
-                    _server?.SetFileTransferDirectoryLocally(_invitation.SessionId, transferFolder);
+                    var activeServer = _server ??
+                        throw new InvalidOperationException("The remote session listener is no longer active.");
+                    activeServer.SetFileTransferDirectoryLocally(_invitation.SessionId, transferFolder);
                     approvedPermissions |= SessionPermission.TransferFiles;
                 }
                 else
