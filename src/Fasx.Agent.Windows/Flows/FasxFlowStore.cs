@@ -34,6 +34,7 @@ internal sealed class FasxFlowStore
             if (flows is null || flows.Count > FasxFlowPolicy.MaximumFlows) return [];
 
             var valid = flows
+                .OfType<FasxFlow>()
                 .Where(FasxFlowPolicy.IsValid)
                 .GroupBy(flow => flow.Id)
                 .Select(group => group.First())
