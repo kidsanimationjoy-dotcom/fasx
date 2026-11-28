@@ -10,7 +10,8 @@ public sealed record RemoteInputMessage(
     double X = 0,
     double Y = 0,
     int Delta = 0,
-    string? Key = null);
+    string? Key = null,
+    string? Text = null);
 
 public static class RemoteInputPolicy
 {
@@ -41,19 +42,26 @@ public static class RemoteInputPolicy
 
             return message.Action switch
             {
-                "move" or "click" or "rightClick" => message.Delta == 0 && message.Key is null,
+                "move" or "click" or "rightClick" => message.Delta == 0 && message.Key is null && message.Text is null,
                 "scroll" => message.Delta is >= -MaximumScrollDelta and <= MaximumScrollDelta &&
-                            message.Delta != 0 && message.Key is null,
+                            message.Delta != 0 && message.Key is null && message.Text is null,
                 _ => false
             };
         }
 
-        return message.Kind == "key" &&
-               message.Action == "press" &&
-               message.Delta == 0 &&
-               message.X == 0 &&
-               message.Y == 0 &&
-               message.Key is not null &&
-               AllowedKeys.Contains(message.Key);
+        if (message.Kind == "key")
+        {
+            return message.Action == "press" &&
+                   message.Delta == 0 && message.X == 0 && message.Y == 0 &&
+                   message.Key is not null && AllowedKeys.Contains(message.Key) &&
+                   message.Text is null;
+        }
+
+        return message.Kind == "text" &&
+               message.Action == "type" &&
+               message.Delta == 0 && message.X == 0 && message.Y == 0 &&
+               message.Key is null &&
+               message.Text is { Length: > 0 and <= 160 } text &&
+               !text.Any(char.IsControl);
     }
 }
