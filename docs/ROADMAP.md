@@ -45,7 +45,7 @@
 - [ ] Add TURN relay only in a later internet-access milestone after security, hosting and cost review.
 
 ## Milestone 3 — Input and connection quality
-**Status: limited input-control and live local quality metrics implemented; Windows/Android CI passed before the File Bridge source additions; latest branch must be rebuilt; physical-device validation pending.**
+**Status: limited input-control and live local quality metrics implemented; latest Windows/Android CI passed on branch commit `b26c815ec5f808f68cbcd87f93e7d919aba3a29e`; physical-device validation pending.**
 - [x] Optional `ControlInput` request, disabled by default.
 - [x] Separate Windows-local checkbox approval, independent of `ViewScreen` approval.
 - [x] WebRTC data channel created only when the Windows owner grants `ControlInput`.
@@ -61,13 +61,15 @@
 - [ ] Connection Guardian: reconnect behaviour, recovery state and network history.
 
 ## Milestone 4 — File Bridge and device health
-**Status: local PC Health and phone-to-PC File Bridge v1 source added; latest CI and physical-device transfer test pending.**
+**Status: local PC Health and phone-to-PC File Bridge v1 source added; latest Windows/Android CI passed on branch commit `b26c815ec5f808f68cbcd87f93e7d919aba3a29e`; physical-device transfer test pending.**
 - [x] Local PC Health window with Windows version, logical processor count, physical memory, system-drive free/total capacity, .NET runtime and uptime.
 - [x] Diagnostics refresh only on opening the panel or pressing Refresh; no telemetry upload.
 - [x] Windows owner selects one destination folder for a session; phone cannot choose or change the host path.
 - [x] Phone user selects individual files through Android's system document picker.
 - [x] Phone-to-PC upload endpoint with a 20 MB per-file limit, content-length enforcement, SHA-256 integrity verification, safe filename validation, unique no-overwrite save, cancellation cleanup, rate limiting and permission rechecks during upload.
-- [ ] CI validation and physical-device transfer test for this feature branch.
+- [x] Windows Release build, unit tests, self-contained publish and artifact upload with File Bridge source.
+- [x] Android debug APK assembly and artifact upload with File Bridge UI and upload client.
+- [ ] Physical-device transfer test between target Android phone and Windows laptop.
 - [ ] Windows-to-phone transfers and two-way folder browsing.
 - [ ] Battery, disk health, CPU utilization and additional hardware information.
 - [ ] Health summaries with read-only default behaviour.
