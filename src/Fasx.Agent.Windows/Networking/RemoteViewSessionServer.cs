@@ -1,6 +1,8 @@
+using System.IO;
 using System.Net;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using System.Text;
 using System.Text.Json;
 using System.Threading.RateLimiting;
 using Fasx.Agent.Core.Pairing;
@@ -38,9 +40,12 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
     private bool _claimConsumed;
     private string? _hostOfferSdp;
     private string? _phoneAnswerSdp;
+    private string? _fileTransferDirectory;
+    private readonly SemaphoreSlim _fileTransferGate = new(1, 1);
     private bool _disposed;
 
     private const int MaximumSdpLength = 48 * 1024;
+    public const long MaximumFileTransferBytes = 20L * 1024 * 1024;
 
     private RemoteViewSessionServer(
         WebApplication app,
@@ -79,7 +84,9 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
         ArgumentNullException.ThrowIfNull(targetDevice);
         ArgumentNullException.ThrowIfNull(hostAddress);
 
-        var allowedRequestedPermissions = SessionPermission.ViewScreen | SessionPermission.ControlInput;
+        var allowedRequestedPermissions = SessionPermission.ViewScreen |
+            SessionPermission.ControlInput |
+            SessionPermission.TransferFiles;
         if (!SessionPermissionPolicy.IsPermissionSetValid(requestedPermissions) ||
             (requestedPermissions & SessionPermission.ViewScreen) == SessionPermission.None ||
             (requestedPermissions & ~allowedRequestedPermissions) != SessionPermission.None)
@@ -115,7 +122,7 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
             builder.Logging.ClearProviders();
             builder.WebHost.ConfigureKestrel(options =>
             {
-                options.Limits.MaxRequestBodySize = 64 * 1024;
+                options.Limits.MaxRequestBodySize = MaximumFileTransferBytes;
                 options.Listen(hostAddress, Port, listenOptions => listenOptions.UseHttps(certificate));
             });
             builder.Services.AddRateLimiter(options =>
@@ -130,6 +137,13 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
                 options.AddFixedWindowLimiter("view-status", limiter =>
                 {
                     limiter.PermitLimit = 180;
+                    limiter.Window = TimeSpan.FromMinutes(1);
+                    limiter.QueueLimit = 0;
+                    limiter.AutoReplenishment = true;
+                });
+                options.AddFixedWindowLimiter("file-upload", limiter =>
+                {
+                    limiter.PermitLimit = 4;
                     limiter.Window = TimeSpan.FromMinutes(1);
                     limiter.QueueLimit = 0;
                     limiter.AutoReplenishment = true;
@@ -204,11 +218,13 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
                 var now = DateTimeOffset.UtcNow;
                 var status = authorization.GetStatus(sessionId, now);
                 var controlInputApproved = authorization.HasPermission(sessionId, SessionPermission.ControlInput, now);
+                var fileTransferApproved = authorization.HasPermission(sessionId, SessionPermission.TransferFiles, now);
                 return Results.Json(new
                 {
                     status = status.ToString(),
                     requestedPermissions = server._requestedPermissions.ToString(),
-                    controlInputApproved
+                    controlInputApproved,
+                    fileTransferApproved
                 }, options: JsonOptions);
             }).RequireRateLimiting("view-status");
             app.MapGet("/api/view/offer/{sessionId:guid}", (Guid sessionId, HttpContext context) =>
@@ -231,9 +247,12 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
                 }
 
                 var offer = server.GetHostOfferForPhone(sessionId, DateTimeOffset.UtcNow);
+                var now = DateTimeOffset.UtcNow;
+                var controlInputApproved = authorization.HasPermission(sessionId, SessionPermission.ControlInput, now);
+                var fileTransferApproved = authorization.HasPermission(sessionId, SessionPermission.TransferFiles, now);
                 return offer is null
-                    ? Results.Json(new { status = "WaitingForScreen", controlInputApproved = authorization.HasPermission(sessionId, SessionPermission.ControlInput, DateTimeOffset.UtcNow) }, options: JsonOptions)
-                    : Results.Json(new { status = "OfferReady", sdp = offer, controlInputApproved = authorization.HasPermission(sessionId, SessionPermission.ControlInput, DateTimeOffset.UtcNow) }, options: JsonOptions);
+                    ? Results.Json(new { status = "WaitingForScreen", controlInputApproved, fileTransferApproved }, options: JsonOptions)
+                    : Results.Json(new { status = "OfferReady", sdp = offer, controlInputApproved, fileTransferApproved }, options: JsonOptions);
             }).RequireRateLimiting("view-status");
 
             app.MapPost("/api/view/answer/{sessionId:guid}", async (Guid sessionId, HttpContext context) =>
@@ -271,6 +290,10 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
 
                 return Results.Accepted(value: new { status = "AnswerReceived" });
             }).RequireRateLimiting("view-request");
+
+            app.MapPut("/api/files/upload/{sessionId:guid}", async (Guid sessionId, HttpContext context) =>
+                await server.ReceiveFileAsync(sessionId, context))
+                .RequireRateLimiting("file-upload");
 
             await app.StartAsync(cancellationToken);
             return server;
@@ -330,6 +353,31 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
         lock (_sync)
         {
             return _invitation?.SessionId == sessionId && _claimConsumed;
+        }
+    }
+
+    /// <summary>
+    /// Store a destination folder explicitly selected by the local Windows owner.
+    /// The remote phone can never provide or change this path.
+    /// </summary>
+    public void SetFileTransferDirectoryLocally(Guid sessionId, string directory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(directory);
+        var fullPath = Path.GetFullPath(directory);
+        if (!Directory.Exists(fullPath))
+        {
+            throw new DirectoryNotFoundException("The selected file-transfer folder does not exist.");
+        }
+
+        lock (_sync)
+        {
+            if (_disposed || !IsKnownSessionUnderLock(sessionId) ||
+                (_requestedPermissions & SessionPermission.TransferFiles) == SessionPermission.None)
+            {
+                throw new InvalidOperationException("File transfer was not requested for this authenticated session.");
+            }
+
+            _fileTransferDirectory = fullPath;
         }
     }
 
@@ -529,6 +577,225 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
             _phoneAnswerSdp = null;
             return answer;
         }
+    }
+
+    private async Task<IResult> ReceiveFileAsync(Guid sessionId, HttpContext context)
+    {
+        var now = DateTimeOffset.UtcNow;
+        if (!IsKnownSession(sessionId))
+        {
+            return Results.NotFound(new { error = "The FASX session was not found." });
+        }
+
+        var token = context.Request.Headers["X-FASX-Session-Token"].ToString();
+        if (!IsSessionTokenValid(sessionId, token))
+        {
+            return Results.Unauthorized();
+        }
+
+        if (!_authorization.HasPermission(sessionId, SessionPermission.TransferFiles, now))
+        {
+            return Results.StatusCode(StatusCodes.Status403Forbidden);
+        }
+
+        string? destinationDirectory;
+        lock (_sync)
+        {
+            destinationDirectory = _fileTransferDirectory;
+        }
+
+        if (string.IsNullOrWhiteSpace(destinationDirectory) || !Directory.Exists(destinationDirectory))
+        {
+            return Results.StatusCode(StatusCodes.Status403Forbidden);
+        }
+
+        if (context.Request.ContentLength is not long contentLength ||
+            contentLength <= 0 ||
+            contentLength > MaximumFileTransferBytes)
+        {
+            return Results.BadRequest(new { error = "The file must be between 1 byte and 20 MB." });
+        }
+
+        var encodedName = context.Request.Query["name"].ToString();
+        if (!Base64Url.TryDecode(encodedName, out var nameBytes))
+        {
+            return Results.BadRequest(new { error = "The file name is invalid." });
+        }
+
+        string fileName;
+        try
+        {
+            fileName = new UTF8Encoding(false, true).GetString(nameBytes);
+        }
+        catch (DecoderFallbackException)
+        {
+            return Results.BadRequest(new { error = "The file name is not valid UTF-8." });
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(nameBytes);
+        }
+
+        if (!IsSafeFileName(fileName))
+        {
+            return Results.BadRequest(new { error = "The file name is not allowed." });
+        }
+
+        byte[] expectedHash;
+        try
+        {
+            expectedHash = Convert.FromHexString(context.Request.Query["sha256"].ToString());
+        }
+        catch (FormatException)
+        {
+            return Results.BadRequest(new { error = "The file integrity hash is invalid." });
+        }
+
+        if (expectedHash.Length != 32)
+        {
+            CryptographicOperations.ZeroMemory(expectedHash);
+            return Results.BadRequest(new { error = "The file integrity hash must be SHA-256." });
+        }
+
+        if (!await _fileTransferGate.WaitAsync(0, context.RequestAborted))
+        {
+            CryptographicOperations.ZeroMemory(expectedHash);
+            return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+        }
+
+        string? temporaryPath = null;
+        try
+        {
+            if (!_authorization.HasPermission(sessionId, SessionPermission.TransferFiles, DateTimeOffset.UtcNow))
+            {
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+            }
+
+            temporaryPath = Path.Combine(destinationDirectory, $".fasx-{Guid.NewGuid():N}.part");
+            using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+            long bytesWritten = 0;
+            var buffer = new byte[64 * 1024];
+
+            await using (var target = new FileStream(
+                temporaryPath,
+                FileMode.CreateNew,
+                FileAccess.Write,
+                FileShare.None,
+                buffer.Length,
+                FileOptions.Asynchronous | FileOptions.WriteThrough))
+            {
+                while (true)
+                {
+                    var read = await context.Request.Body.ReadAsync(buffer.AsMemory(), context.RequestAborted);
+                    if (read == 0) break;
+
+                    bytesWritten += read;
+                    if (bytesWritten > MaximumFileTransferBytes || bytesWritten > contentLength)
+                    {
+                        return Results.BadRequest(new { error = "The uploaded file exceeded its approved size." });
+                    }
+
+                    hash.AppendData(buffer, 0, read);
+                    await target.WriteAsync(buffer.AsMemory(0, read), context.RequestAborted);
+                }
+
+                await target.FlushAsync(context.RequestAborted);
+            }
+
+            if (bytesWritten != contentLength)
+            {
+                return Results.BadRequest(new { error = "The uploaded file size did not match its Content-Length." });
+            }
+
+            var actualHash = hash.GetHashAndReset();
+            var integrityMatches = CryptographicOperations.FixedTimeEquals(expectedHash, actualHash);
+            CryptographicOperations.ZeroMemory(actualHash);
+            CryptographicOperations.ZeroMemory(expectedHash);
+            expectedHash = [];
+
+            if (!integrityMatches)
+            {
+                return Results.BadRequest(new { error = "The uploaded file failed its SHA-256 integrity check." });
+            }
+
+            if (!_authorization.HasPermission(sessionId, SessionPermission.TransferFiles, DateTimeOffset.UtcNow))
+            {
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+            }
+
+            var finalPath = CreateUniqueFilePath(destinationDirectory, fileName);
+            File.Move(temporaryPath, finalPath, overwrite: false);
+            temporaryPath = null;
+
+            return Results.Ok(new
+            {
+                status = "FileReceived",
+                fileName = Path.GetFileName(finalPath),
+                bytes = bytesWritten
+            });
+        }
+        catch (OperationCanceledException)
+        {
+            return Results.StatusCode(499);
+        }
+        catch (IOException)
+        {
+            return Results.Problem(
+                title: "FASX could not save the file",
+                detail: "The selected destination may be unavailable or out of space.",
+                statusCode: StatusCodes.Status507InsufficientStorage);
+        }
+        finally
+        {
+            if (expectedHash.Length > 0)
+            {
+                CryptographicOperations.ZeroMemory(expectedHash);
+            }
+
+            if (temporaryPath is not null)
+            {
+                try { File.Delete(temporaryPath); } catch (IOException) { }
+            }
+
+            _fileTransferGate.Release();
+        }
+    }
+
+    private static bool IsSafeFileName(string fileName)
+    {
+        if (string.IsNullOrWhiteSpace(fileName) ||
+            fileName.Length > 120 ||
+            fileName is "." or ".." ||
+            fileName != Path.GetFileName(fileName) ||
+            fileName.Any(character => Path.GetInvalidFileNameChars().Contains(character)) ||
+            fileName.EndsWith(' ') ||
+            fileName.EndsWith('.'))
+        {
+            return false;
+        }
+
+        var stem = Path.GetFileNameWithoutExtension(fileName).TrimEnd(' ', '.');
+        var reserved = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "CON", "PRN", "AUX", "NUL",
+            "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+            "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"
+        };
+        return stem.Length > 0 && !reserved.Contains(stem);
+    }
+
+    private static string CreateUniqueFilePath(string directory, string fileName)
+    {
+        var extension = Path.GetExtension(fileName);
+        var stem = Path.GetFileNameWithoutExtension(fileName);
+        var candidate = Path.Combine(directory, fileName);
+        var suffix = 1;
+        while (File.Exists(candidate) || Directory.Exists(candidate))
+        {
+            candidate = Path.Combine(directory, $"{stem} ({suffix++}){extension}");
+        }
+
+        return candidate;
     }
 
     private bool IsKnownSessionUnderLock(Guid sessionId) =>
