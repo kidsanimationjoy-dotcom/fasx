@@ -68,10 +68,15 @@
 - [ ] Health summaries with read-only default behaviour.
 
 ## Milestone 5 — SmartDeck and Context Control
-- Customizable control cards.
-- Application-aware panels (opt-in).
-- Deck export/import with validation.
-- Deck Gallery templates.
+**Status: Android local SmartDeck customization foundation added; app-aware context and sharing remain.**
+- [x] Show/hide built-in SmartDeck cards.
+- [x] Reorder cards with up/down controls.
+- [x] Save the layout locally on the Android phone.
+- [x] Label planned modules clearly and prevent them from appearing as working capabilities.
+- [ ] User-created custom cards with typed action selection.
+- [ ] Application-aware panels (opt-in).
+- [ ] Deck export/import with validation.
+- [ ] Deck Gallery templates.
 
 ## Milestone 6 — FASX Flows and Intelligence
 - Visual workflow builder based on registered typed actions.
