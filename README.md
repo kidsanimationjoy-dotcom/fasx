@@ -4,7 +4,7 @@
 
 FASX is an all-in-one personal computer command centre combining secure remote desktop, device management, customizable controls, and user-approved automation.
 
- > **Project status: early development.** Same-LAN pairing, WebRTC screen viewing, optional permission-gated input, a customizable Android SmartDeck, local Windows PC Health, and local Connection Guardian metrics are in source. Windows Release build/tests/publish and Android debug APK assembly passed on branch commit `c09a5980c3179d36dea578ced7f721d7ac9d8361`. Physical-device verification, internet relay infrastructure and signed release packages remain outstanding; this is not a production release.
+ > **Project status: early development.** Same-LAN pairing, WebRTC screen viewing, optional permission-gated input, a customizable Android SmartDeck, local Windows PC Health, local Connection Guardian metrics, and a phone-to-PC File Bridge prototype are in source. Windows Release build/tests/publish and Android debug APK assembly passed on earlier commit `c09a5980c3179d36dea578ced7f721d7ac9d8361`; the newer File Bridge changes still need CI. Physical-device verification, internet relay infrastructure and signed release packages remain outstanding; this is not a production release.
 
 ## Product vision
 
@@ -89,12 +89,13 @@ The Android app scans QR pairing or view-session invitations, asks the phone own
 - Connection Guardian on Android: local stream resolution, approximate decoded FPS, received bitrate and WebRTC round-trip time during an active session.
 - Local PC Health panel with read-only Windows version, processor count, physical memory, system-drive capacity/free space, .NET version, and uptime. It refreshes only when opened or manually refreshed and does not upload telemetry.
 - Android SmartDeck editor with show/hide cards, reorder controls, locally persisted layout, and clear availability labels for planned modules.
+- File Bridge v1 source: phone user selects one file using Android's system picker; Windows owner separately approves TransferFiles and selects a destination folder; uploads are limited to 20 MB, SHA-256 checked, saved under a sanitized unique name without overwriting existing files, and permission is checked during upload.
 
 **Not implemented yet:**
 - Real phone-to-Windows pairing test.
 - Verified real-device screen streaming (the source implementation is present but not yet tested on the target laptop/phone).
 - Physical-device verification of pairing, screen streaming and optional input on the target laptop/phone.
-- Full keyboard shortcuts, arbitrary keys, app automation, file transfer and clipboard synchronization.
+- Full keyboard shortcuts, arbitrary keys, app automation, Windows-to-phone file transfer, two-way folder browsing and clipboard synchronization.
 - Internet signaling/relay and remote-from-anywhere connections.
 - FASX Flows execution and AI diagnostics.
 - Advanced Connection Guardian recovery/reconnect behaviour and network history.
