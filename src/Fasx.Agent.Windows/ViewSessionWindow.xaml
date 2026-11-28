@@ -54,11 +54,10 @@
                         </StackPanel>
                     </Border>
                     <CheckBox x:Name="RequestControlInputCheckBox"
-                              Content="Let this phone request pointer and basic keyboard control"
                               Margin="0,14,0,0"
-                              Foreground="#F4F7FF"
-                              FontSize="12"
-                              TextWrapping="Wrap" />
+                              Foreground="#F4F7FF">
+                        <TextBlock Text="Let this phone request pointer and basic keyboard control" TextWrapping="Wrap" FontSize="12" />
+                    </CheckBox>
                     <TextBlock Text="Control is optional and still needs a separate approval on this computer."
                                Foreground="#AAB6CC" FontSize="11" Margin="0,5,0,0" TextWrapping="Wrap" />
                     <Button x:Name="CreateInviteButton"
@@ -102,13 +101,12 @@
                                Margin="0,8,0,10"
                                TextWrapping="Wrap" />
                     <CheckBox x:Name="ApproveControlInputCheckBox"
-                              Content="Also approve pointer and basic navigation keys"
                               Visibility="Collapsed"
                               IsChecked="False"
                               Foreground="#F4F7FF"
-                              FontSize="12"
-                              Margin="0,0,0,10"
-                              TextWrapping="Wrap" />
+                              Margin="0,0,0,10">
+                        <TextBlock Text="Also approve pointer and basic navigation keys" TextWrapping="Wrap" FontSize="12" />
+                    </CheckBox>
                     <Button x:Name="StartStreamButton"
                             Content="Start screen sharing…"
                             Click="StartStream_Click"
