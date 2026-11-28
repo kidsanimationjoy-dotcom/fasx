@@ -686,6 +686,14 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
             {
                 while (true)
                 {
+                    if (!_authorization.HasPermission(
+                        sessionId,
+                        SessionPermission.TransferFiles,
+                        DateTimeOffset.UtcNow))
+                    {
+                        return Results.StatusCode(StatusCodes.Status403Forbidden);
+                    }
+
                     var read = await context.Request.Body.ReadAsync(buffer.AsMemory(), context.RequestAborted);
                     if (read == 0) break;
 
