@@ -505,7 +505,8 @@ class MainActivity : ComponentActivity() {
                     "The selected file name is too long or invalid."
                 }
 
-                temporaryFile = File(cacheDir, "fasx-upload-${UUID.randomUUID()}.part")
+                val tempFile = File(cacheDir, "fasx-upload-${UUID.randomUUID()}.part")
+                temporaryFile = tempFile
                 val digest = MessageDigest.getInstance("SHA-256")
                 var totalBytes = 0L
                 val maximumBytes = 20L * 1024 * 1024
@@ -513,7 +514,7 @@ class MainActivity : ComponentActivity() {
                 val input = contentResolver.openInputStream(uri)
                     ?: throw IllegalStateException("Android could not open the selected file.")
                 input.use { source ->
-                    FileOutputStream(temporaryFile).use { target ->
+                    FileOutputStream(tempFile).use { target ->
                         val buffer = ByteArray(64 * 1024)
                         while (true) {
                             val read = source.read(buffer)
