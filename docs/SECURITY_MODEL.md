@@ -58,11 +58,11 @@ Sensitive actions may require an additional confirmation at execution time even 
 
 ## File access
 
-- Start with explicit allowlist of user-selected folders.
-- Require confirmation for delete, overwrite, move, or other destructive operations.
-- Prevent path traversal and reparse-point escape.
-- Show source, destination, filename, size, and transfer progress.
-- Make cancellation available and verify transfer integrity.
+- The first File Bridge path is phone-to-PC only. Windows owner separately requests/grants `TransferFiles` and chooses the destination folder through a native folder picker; the phone cannot supply or change the host path.
+- The phone user selects each individual source file through Android's system document picker. No background folder scan or automatic upload is permitted.
+- Enforce a 20 MB per-file limit, required Content-Length, a bounded upload rate, safe leaf filenames, SHA-256 verification, temporary-file cleanup on interruption/failure, and unique no-overwrite destination names.
+- Recheck the active `TransferFiles` permission while streaming and before final save.
+- Windows-to-phone transfer, folder browsing, delete, overwrite, and move operations are not implemented in this first slice.
 
 ## Transport and credentials
 
