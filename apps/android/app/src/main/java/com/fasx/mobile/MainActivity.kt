@@ -56,6 +56,7 @@ class MainActivity : ComponentActivity() {
     private var pendingViewInvite by mutableStateOf<ViewSessionInvite?>(null)
     private var activeViewInvite by mutableStateOf<ViewSessionInvite?>(null)
     private var viewOfferSdp by mutableStateOf<String?>(null)
+    private var remoteControlAllowed by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,6 +67,7 @@ class MainActivity : ComponentActivity() {
                     pendingInvite = pendingInvite,
                     pendingViewInvite = pendingViewInvite,
                     viewOfferSdp = viewOfferSdp,
+                    controlInputAllowed = remoteControlAllowed,
                     onSubmitViewAnswer = { sdp -> submitViewSessionAnswer(sdp) },
                     onRemoteViewStatus = { message -> updateUiStatus(message) },
                     onStopViewing = { stopViewing() },
@@ -310,7 +312,12 @@ class MainActivity : ComponentActivity() {
                                     runOnUiThread {
                                         activeViewInvite = invite
                                         viewOfferSdp = sdp
-                                        uiStatus = "Screen offer received. Establishing the view-only connection…"
+                                        remoteControlAllowed = offerResult.optBoolean("controlInputApproved", false)
+                                        uiStatus = if (remoteControlAllowed) {
+                                            "Screen offer received. Windows approved view and limited input."
+                                        } else {
+                                            "Screen offer received. Establishing a view-only connection…"
+                                        }
                                     }
                                     return@execute
                                 }
@@ -396,6 +403,7 @@ class MainActivity : ComponentActivity() {
 
     private fun stopViewing() {
         viewOfferSdp = null
+        remoteControlAllowed = false
         activeViewInvite = null
         uiStatus = "View-only connection closed on this phone."
     }
@@ -431,6 +439,7 @@ private fun FasxHome(
     pendingInvite: PairingInvite?,
     pendingViewInvite: ViewSessionInvite?,
     viewOfferSdp: String?,
+    controlInputAllowed: Boolean,
     onSubmitViewAnswer: (String) -> Unit,
     onRemoteViewStatus: (String) -> Unit,
     onStopViewing: () -> Unit,
@@ -480,12 +489,17 @@ private fun FasxHome(
                 Text(
                     "This will send a signed View screen request to " +
                         pendingViewInvite.endpoint.host + ":" + pendingViewInvite.endpoint.port +
-                        ". The computer owner must approve it locally. This request does not ask for mouse, keyboard, files or clipboard access."
+                        ". The computer owner must approve it locally." +
+                        if (pendingViewInvite.controlInputRequested) {
+                            " This invitation also asks to let the computer owner consider pointer and limited keyboard input. Input remains disabled unless the owner separately approves it in Windows. No shell commands, file, clipboard or power access are requested."
+                        } else {
+                            " This is view-only and does not request mouse, keyboard, files or clipboard access."
+                        }
                 )
             },
             confirmButton = {
                 TextButton(onClick = { onConfirmViewSession(pendingViewInvite) }) {
-                    Text("Send view-only request")
+                    Text(if (pendingViewInvite.controlInputRequested) "Request screen + optional input" else "Send view-only request")
                 }
             },
             dismissButton = {
@@ -602,7 +616,7 @@ private fun FasxHome(
                                             val pending = state.pendingOfferSdp
                                             if (pending != null && state.lastOfferSdp != pending) {
                                                 evaluateJavascript(
-                                                    "window.startFasxRemoteView(${JSONObject.quote(pending)})",
+                                                    "window.startFasxRemoteView(${JSONObject.quote(pending)}, ${controlInputAllowed})",
                                                     null
                                                 )
                                                 state.lastOfferSdp = pending
@@ -621,7 +635,7 @@ private fun FasxHome(
                                         state.lastOfferSdp != viewOfferSdp
                                     ) {
                                         webView.evaluateJavascript(
-                                            "window.startFasxRemoteView(${JSONObject.quote(viewOfferSdp)})",
+                                            "window.startFasxRemoteView(${JSONObject.quote(viewOfferSdp)}, ${controlInputAllowed})",
                                             null
                                         )
                                         state.lastOfferSdp = viewOfferSdp
