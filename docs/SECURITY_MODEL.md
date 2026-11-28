@@ -56,6 +56,15 @@ Sensitive actions may require an additional confirmation at execution time even 
 - Check ControlInput authorization for every message and drop input immediately when the grant is revoked or session expires.
 - Keep the Windows Stop session button visible while the session is active.
 
+## FASX Flows
+
+- The first Flows release is local to the Windows companion and is not exposed through remote session APIs.
+- Flow steps use a closed typed action enum; no command text, script, executable path or arbitrary arguments are stored or executed.
+- Allowed actions are a fixed list of built-in app aliases, HTTPS URL opening, and a folder picker that asks the Windows user to choose a folder again at run time.
+- HTTPS URL steps reject embedded credentials, non-HTTPS schemes, non-standard ports and localhost.
+- Each run shows the full action list and requires an explicit Windows confirmation. A failed step or cancelled folder picker stops the flow.
+- Remote flow execution, triggers and imported workflows are not enabled.
+
 ## File access
 
 - The first File Bridge path is phone-to-PC only. Windows owner separately requests/grants `TransferFiles` and chooses the destination folder through a native folder picker; the phone cannot supply or change the host path.
