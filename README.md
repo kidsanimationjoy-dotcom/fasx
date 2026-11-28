@@ -4,7 +4,7 @@
 
 FASX is an all-in-one personal computer command centre combining secure remote desktop, device management, customizable controls, and user-approved automation.
 
-> **Project status: early development.** The repository contains same-LAN phone pairing, local Windows session approval, WebRTC screen viewing, and an optional permission-gated input data channel. Windows and Android CI plus real-device checks are still required; this is not a production remote-desktop release.
+ > **Project status: early development.** Same-LAN pairing, WebRTC screen viewing, optional permission-gated input, a customizable Android SmartDeck, local Windows PC Health, and local Connection Guardian metrics are in source. Windows Release build/tests/publish and Android debug APK assembly passed on branch commit `c09a5980c3179d36dea578ced7f721d7ac9d8361`. Physical-device verification, internet relay infrastructure and signed release packages remain outstanding; this is not a production release.
 
 ## Product vision
 
@@ -86,17 +86,18 @@ The Android app scans QR pairing or view-session invitations, asks the phone own
 - Token-protected, same-LAN WebRTC offer/answer signaling over the pinned HTTPS session endpoint.
 - Windows WebView2 video sender and Android WebView video receiver. The Windows owner must press Start and choose the screen/window.
 - Optional WebRTC data channel for pointer movement/clicks/scrolling, a limited navigation-key allowlist, and short printable text entry. The Windows host validates every message again and drops input unless `ControlInput` is currently approved.
+- Connection Guardian on Android: local stream resolution, approximate decoded FPS, received bitrate and WebRTC round-trip time during an active session.
 - Local PC Health panel with read-only Windows version, processor count, physical memory, system-drive capacity/free space, .NET version, and uptime. It refreshes only when opened or manually refreshed and does not upload telemetry.
 - Android SmartDeck editor with show/hide cards, reorder controls, locally persisted layout, and clear availability labels for planned modules.
 
 **Not implemented yet:**
-- Verified CI build or signed installer.
 - Real phone-to-Windows pairing test.
 - Verified real-device screen streaming (the source implementation is present but not yet tested on the target laptop/phone).
 - Physical-device verification of pairing, screen streaming and optional input on the target laptop/phone.
 - Full keyboard shortcuts, arbitrary keys, app automation, file transfer and clipboard synchronization.
 - Internet signaling/relay and remote-from-anywhere connections.
 - FASX Flows execution and AI diagnostics.
+- Advanced Connection Guardian recovery/reconnect behaviour and network history.
 - Remote PC Health data query over the session (current PC Health panel is local to Windows).
 - Signed production installers/packages.
 
@@ -105,7 +106,7 @@ The Android app scans QR pairing or view-session invitations, asks the phone own
 - Windows companion: C# / .NET 10 LTS / WPF.
 - Android client: Kotlin and Jetpack Compose.
 - Local view-session signaling: temporary ASP.NET Core HTTPS endpoint bound to one private IPv4 address.
-- Local media and input transport: browser-native WebRTC with no STUN/TURN relay in this first LAN-only prototype.
+- Local media and input transport: browser-native WebRTC with no STUN/TURN relay in this first LAN-only prototype. The Android viewer shows local live quality metrics for the active session.
 - Internet signaling and relay infrastructure are not implemented.
 - Local pairing uses HTTPS with an invitation-bound SHA-256 SPKI pin.
 - Windows device records are protected with DPAPI for the current Windows user.
