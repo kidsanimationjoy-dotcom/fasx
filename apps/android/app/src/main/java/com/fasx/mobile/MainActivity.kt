@@ -144,7 +144,6 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                     onSubmitViewAnswer = { sdp -> submitViewSessionAnswer(sdp) },
-                    onSendFile = { uri -> sendFileToComputer(uri) },
                     onRemoteViewStatus = { message -> updateUiStatus(message) },
                     onStopViewing = { stopViewing() },
                     onScanInvitation = { scanInvitation() },
@@ -637,7 +636,6 @@ private fun FasxHome(
     onSaveDeck: (List<String>) -> Unit,
     onModuleSelected: (String) -> Unit,
     onSubmitViewAnswer: (String) -> Unit,
-    onSendFile: (Uri) -> Unit,
     onRemoteViewStatus: (String) -> Unit,
     onStopViewing: () -> Unit,
     onScanInvitation: () -> Unit,
@@ -763,22 +761,28 @@ private fun FasxHome(
     if (pendingViewInvite != null) {
         AlertDialog(
             onDismissRequest = onCancelPairing,
-            title = { Text("Request view-only access") },
+            title = { Text("Review requested access") },
             text = {
                 Text(
-                    "This will send a signed View screen request to " +
-                        pendingViewInvite.endpoint.host + ":" + pendingViewInvite.endpoint.port +
-                        ". The computer owner must approve it locally." +
+                    buildString {
+                        append("This sends a signed screen-session request to ")
+                        append(pendingViewInvite.endpoint.host)
+                        append(":")
+                        append(pendingViewInvite.endpoint.port)
+                        append(". The computer owner must approve screen viewing locally.")
                         if (pendingViewInvite.controlInputRequested) {
-                            " This invitation also asks to let the computer owner consider pointer and limited keyboard input. Input remains disabled unless the owner separately approves it in Windows. No shell commands, file, clipboard or power access are requested."
-                        } else {
-                            " This is view-only and does not request mouse, keyboard, files or clipboard access."
+                            append(" The invitation also asks for optional pointer and limited keyboard input; Windows must approve that separately.")
                         }
+                        if (pendingViewInvite.fileTransferRequested) {
+                            append(" The invitation also asks for phone-to-PC file transfer. Windows must approve it separately and choose the destination folder. You select each file, with a 20 MB per-file limit.")
+                        }
+                        append(" No shell commands, clipboard, audio or power actions are requested.")
+                    }
                 )
             },
             confirmButton = {
                 TextButton(onClick = { onConfirmViewSession(pendingViewInvite) }) {
-                    Text(if (pendingViewInvite.controlInputRequested) "Request screen + optional input" else "Send view-only request")
+                    Text("Send session request")
                 }
             },
             dismissButton = {
@@ -929,6 +933,20 @@ private fun FasxHome(
                                 webView.destroy()
                             }
                         )
+                        if (fileTransferAllowed) {
+                            Button(
+                                onClick = { onModuleSelected("file-bridge") },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3978E8))
+                            ) {
+                                Text("Send a file to this PC")
+                            }
+                            Text(
+                                "Your Windows owner approved a destination folder. Choose one file at a time (maximum 20 MB).",
+                                color = Color(0xFF9CAAC4),
+                                fontSize = 10.sp
+                            )
+                        }
                         TextButton(onClick = onStopViewing) {
                             Text("Stop viewing")
                         }
