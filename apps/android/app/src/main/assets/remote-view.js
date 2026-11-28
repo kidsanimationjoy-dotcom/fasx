@@ -93,10 +93,12 @@
         inputChannel = channel;
         channel.onopen = () => {
           controls.hidden = false;
+          video.style.touchAction = "none";
           report("Connected. Windows approved view and limited input.");
         };
         channel.onclose = () => {
           controls.hidden = true;
+          video.style.touchAction = "pan-y";
           inputChannel = null;
           report("Remote input channel closed. Screen viewing may continue.");
         };
@@ -176,6 +178,7 @@
     }
     video.srcObject = null;
     controls.hidden = true;
+    video.style.touchAction = "pan-y";
     controlAllowed = false;
     pointerDown = null;
     if (updateStatus) report("View-only connection stopped.");
