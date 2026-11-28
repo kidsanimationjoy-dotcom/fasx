@@ -2,7 +2,7 @@
 
 ## Status
 
-**Source implementation:** a same-LAN WebRTC screen-view path is in the repository. It includes an optional, separately approved input data channel with Windows-side event validation. CI and real-device verification are still required.
+**Source implementation:** a same-LAN WebRTC screen-view path is in the repository. It includes separately approved input, local Connection Guardian metrics, and a separate phone-to-PC file-transfer path. Windows/Android CI passed before the latest File Bridge additions; the current branch needs a fresh build and physical-device tests.
 
 **Release status:** the new Windows/Android CI run and a real-device same-Wi-Fi test are still required. Do not treat the source implementation as a verified remote-desktop release until the Windows companion and Android app are tested together on actual devices.
 
@@ -32,6 +32,7 @@ The Android app loads a bundled local WebView page. It:
 - creates an RTCPeerConnection with no public STUN/TURN servers in this LAN-only prototype;
 - adds a receive-only video transceiver;
 - accepts the optional `fasx-control` data channel only when the Windows host has approved ControlInput;
+- exposes File Bridge only when the Windows host has separately approved TransferFiles; the phone user selects a single file using Android's system document picker;
 - applies the Windows offer;
 - creates an SDP answer and waits for ICE candidate gathering to complete;
 - submits the answer over the temporary HTTPS endpoint with the session token;
@@ -65,6 +66,7 @@ The first prototype uses browser-native WebRTC with an empty ICE server list. It
 - TURN relay fallback;
 - remote-from-anywhere access;
 - a persistent internet signaling service.
+- authenticated phone-to-PC file upload on the same temporary HTTPS session endpoint, with 20 MB cap and SHA-256 validation;
 
 A router's client-isolation setting, separate VLANs, Windows firewall policy, or network topology may prevent the direct peer connection. Do not disable firewall/security features or weaken router protection to force a connection. Record the failure and test on a trusted home network.
 
@@ -76,12 +78,12 @@ WebRTC media uses its standardized secure transport. FASX does not invent its ow
 - Full keyboard shortcuts or unrestricted system input.
 - Audio.
 - Clipboard synchronization.
-- File transfer.
+- Windows-to-phone file transfer and two-way folder browsing.
 - Power actions or arbitrary command execution.
 - Hidden/unattended capture.
 - Internet relay.
 
-Limited pointer and key input are now implemented in source under a separate ControlInput permission, but still require CI and physical-device tests. Pairing or approval of ViewScreen never grants ControlInput.
+Limited pointer/key input and phone-to-PC File Bridge are implemented in source under separate `ControlInput` and `TransferFiles` permissions, but the latest changes require CI and physical-device tests. Pairing or approval of ViewScreen never grants either permission.
 
 ## Validation required before release
 
