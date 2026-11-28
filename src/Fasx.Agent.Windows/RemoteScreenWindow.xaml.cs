@@ -91,6 +91,26 @@ public partial class RemoteScreenWindow : Window
                 }
             };
 
+            core.NavigationCompleted += (_, args) =>
+            {
+                if (!args.IsSuccess)
+                {
+                    SetStatus("The local remote-screen page did not load. The session will stop.");
+                    StopSessionAndClose();
+                    return;
+                }
+
+                var controlInputEnabled = _authorization.HasPermission(
+                    _sessionId,
+                    SessionPermission.ControlInput,
+                    DateTimeOffset.UtcNow);
+                core.PostWebMessageAsJson(JsonSerializer.Serialize(new
+                {
+                    type = "configure",
+                    controlInputEnabled
+                }));
+            };
+
             var assetsPath = Path.Combine(AppContext.BaseDirectory, "wwwroot");
             var pagePath = Path.Combine(assetsPath, "remote-screen.html");
             if (!File.Exists(pagePath))
