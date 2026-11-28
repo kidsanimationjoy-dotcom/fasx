@@ -65,7 +65,7 @@
                 <Border Background="#202C45" CornerRadius="12" Padding="14">
                     <StackPanel>
                         <TextBlock Text="FOUNDATION BUILD" Foreground="#8FB7FF" FontSize="10" FontWeight="Bold" />
-                        <TextBlock Text="FASX includes the visible Windows companion, a local approval flow, and protected paired-device storage. Remote desktop streaming and input are not yet enabled."
+                        <TextBlock Text="FASX includes same-LAN screen sessions, optional approved input, phone-to-PC file transfer, PC Health and local Flows. Test the Windows companion with your paired phone before relying on remote features."
                                    Margin="0,6,0,0"
                                    TextWrapping="Wrap"
                                    FontSize="13" />
@@ -109,7 +109,7 @@
                             Background="#263A5C"
                             Foreground="White"
                             FontWeight="SemiBold" />
-                    <Button Content="Request view-only session"
+                    <Button Content="Request remote session"
                             Click="ViewSession_Click"
                             Margin="0,8,0,0"
                             Padding="12,10"
