@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using Microsoft.Win32;
 using Fasx.Agent.Core.Pairing;
 using Fasx.Agent.Core.Security;
 using Fasx.Agent.Core.Sessions;
@@ -78,6 +79,10 @@ public partial class ViewSessionWindow : Window
             {
                 _requestedPermissions |= SessionPermission.ControlInput;
             }
+            if (RequestFileTransferCheckBox.IsChecked == true)
+            {
+                _requestedPermissions |= SessionPermission.TransferFiles;
+            }
 
             _server = await RemoteViewSessionServer.StartAsync(
                 _pairingCoordinator,
@@ -92,6 +97,7 @@ public partial class ViewSessionWindow : Window
                 v = 1,
                 kind = "fasx-view",
                 controlInputRequested = (_requestedPermissions & SessionPermission.ControlInput) != SessionPermission.None,
+                fileTransferRequested = (_requestedPermissions & SessionPermission.TransferFiles) != SessionPermission.None,
                 sessionId = _invitation.SessionId.ToString("D"),
                 secret = _invitation.Secret,
                 nonce = _invitation.Nonce,
@@ -139,13 +145,17 @@ public partial class ViewSessionWindow : Window
             case SessionStatus.AwaitingLocalApproval:
                 StartStreamButton.Visibility = Visibility.Collapsed;
                 SessionStatusText.Text = "A verified request has arrived. Your approval is required.";
-                ApprovalDescriptionText.Text = (_requestedPermissions & SessionPermission.ControlInput) != SessionPermission.None
-                    ? "The paired phone requests View screen and optional pointer/basic-key input. Choose separately whether to grant input."
-                    : "The paired phone is requesting View screen only.";
-                ApproveControlInputCheckBox.Visibility = (_requestedPermissions & SessionPermission.ControlInput) != SessionPermission.None
-                    ? Visibility.Visible
-                    : Visibility.Collapsed;
+                var requestsInput = (_requestedPermissions & SessionPermission.ControlInput) != SessionPermission.None;
+                var requestsFiles = (_requestedPermissions & SessionPermission.TransferFiles) != SessionPermission.None;
+                ApprovalDescriptionText.Text =
+                    "The paired phone requests View screen" +
+                    (requestsInput ? ", optional pointer/basic-key input" : string.Empty) +
+                    (requestsFiles ? ", and optional phone-to-PC file transfer" : string.Empty) +
+                    ". Choose separately which extra permissions to grant.";
+                ApproveControlInputCheckBox.Visibility = requestsInput ? Visibility.Visible : Visibility.Collapsed;
+                ApproveFileTransferCheckBox.Visibility = requestsFiles ? Visibility.Visible : Visibility.Collapsed;
                 ApproveControlInputCheckBox.IsChecked = false;
+                ApproveFileTransferCheckBox.IsChecked = false;
                 ApprovalButtons.Visibility = Visibility.Visible;
                 break;
 
@@ -193,6 +203,27 @@ public partial class ViewSessionWindow : Window
                 approvedPermissions |= SessionPermission.ControlInput;
             }
 
+            string? transferFolder = null;
+            if ((_requestedPermissions & SessionPermission.TransferFiles) != SessionPermission.None &&
+                ApproveFileTransferCheckBox.IsChecked == true)
+            {
+                var folderDialog = new OpenFolderDialog
+                {
+                    Title = "Choose the folder where FASX may save files sent from this phone"
+                };
+
+                if (folderDialog.ShowDialog(this) == true)
+                {
+                    transferFolder = folderDialog.FolderName;
+                    _server?.SetFileTransferDirectoryLocally(_invitation.SessionId, transferFolder);
+                    approvedPermissions |= SessionPermission.TransferFiles;
+                }
+                else
+                {
+                    ApproveFileTransferCheckBox.IsChecked = false;
+                }
+            }
+
             _authorization.ApproveLocally(
                 _invitation.SessionId,
                 approvedPermissions,
@@ -202,9 +233,24 @@ public partial class ViewSessionWindow : Window
             ApprovalButtons.Visibility = Visibility.Collapsed;
             StartStreamButton.Visibility = Visibility.Visible;
             SessionStatusText.Text = "View screen permission approved.";
-            ApprovalDescriptionText.Text = approvedPermissions.HasFlag(SessionPermission.ControlInput)
-                ? "View screen and pointer/basic-key input are approved for 10 minutes. Start screen sharing to begin; use Stop session to revoke both."
-                : "Only View screen is approved for 10 minutes. Remote input is not permitted.";
+            var approvedSummary = new List<string> { "View screen" };
+            if (approvedPermissions.HasFlag(SessionPermission.ControlInput))
+                approvedSummary.Add("pointer/basic-key input");
+            if (approvedPermissions.HasFlag(SessionPermission.TransferFiles))
+                approvedSummary.Add("phone-to-PC file transfer");
+            ApprovalDescriptionText.Text =
+                string.Join(", ", approvedSummary) +
+                " approved for 10 minutes. Start screen sharing to begin.";
+            if (transferFolder is not null)
+            {
+                ApprovalDescriptionText.Text += Environment.NewLine +
+                    "Files from this phone will be saved in: " + transferFolder;
+            }
+            else if ((_requestedPermissions & SessionPermission.TransferFiles) != SessionPermission.None)
+            {
+                ApprovalDescriptionText.Text += Environment.NewLine +
+                    "File transfer was not granted because no destination folder was selected.";
+            }
         }
         catch (Exception exception)
         {
