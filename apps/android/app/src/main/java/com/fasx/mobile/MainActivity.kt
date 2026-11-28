@@ -118,6 +118,7 @@ class MainActivity : ComponentActivity() {
                             "flows" -> updateUiStatus(
                                 "FASX Flows is planned. Actions will use registered, user-approved steps rather than arbitrary commands."
                             )
+                            else -> updateUiStatus("This SmartDeck card is not available.")
                         }
                     },
                     onSubmitViewAnswer = { sdp -> submitViewSessionAnswer(sdp) },
