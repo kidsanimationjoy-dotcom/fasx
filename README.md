@@ -4,7 +4,7 @@
 
 FASX is an all-in-one personal computer command centre combining secure remote desktop, device management, customizable controls, and user-approved automation.
 
- > **Project status: early development.** Same-LAN pairing, WebRTC screen viewing, optional permission-gated input, Android SmartDeck customization, local Windows PC Health, Connection Guardian metrics, phone-to-PC File Bridge v1, and a local Windows FASX Flows editor are implemented in source. Windows Release build/tests/publish and Android debug APK assembly passed on the File Bridge commit `b26c815ec5f808f68cbcd87f93e7d919aba3a29e`; the newer Flows changes still need CI. Real-device verification, internet relay infrastructure and signed release packages remain outstanding; this is not a production release.
+ > **Project status: early development.** Same-LAN pairing, WebRTC screen viewing, optional permission-gated input, Android SmartDeck customization, local Windows PC Health, Connection Guardian metrics, phone-to-PC File Bridge v1, and a local Windows FASX Flows editor are implemented in source. Windows Release build, unit tests, self-contained publish, and Android debug APK assembly passed on the latest branch commit `a59722d49cccae7b7e3927d189b0e286ae998979`. Real-device verification, internet relay infrastructure and signed release packages remain outstanding; this is not a production release.
 
 ## Product vision
 
@@ -88,6 +88,7 @@ The Android app scans QR pairing or view-session invitations, asks the phone own
 - Optional WebRTC data channel for pointer movement/clicks/scrolling, a limited navigation-key allowlist, and short printable text entry. The Windows host validates every message again and drops input unless `ControlInput` is currently approved.
 - Connection Guardian on Android: local stream resolution, approximate decoded FPS, received bitrate and WebRTC round-trip time during an active session.
 - Local PC Health panel with read-only Windows version, processor count, physical memory, system-drive capacity/free space, .NET version, and uptime. It refreshes only when opened or manually refreshed and does not upload telemetry.
+- Local Windows FASX Flows v1: up to 20 flows with 8 typed steps each, fixed app allowlist, HTTPS website step, user-selected folder step, and explicit Windows confirmation before each run.
 - Android SmartDeck editor with show/hide cards, reorder controls, locally persisted layout, and clear availability labels for planned modules.
 - File Bridge v1 source: phone user selects one file using Android's system picker; Windows owner separately approves TransferFiles and selects a destination folder; uploads are limited to 20 MB, SHA-256 checked, saved under a sanitized unique name without overwriting existing files, and permission is checked during upload.
 - Local Windows FASX Flows v1: up to 20 locally stored flows with up to 8 typed steps each; actions are limited to Notepad, Calculator, Paint, File Explorer, HTTPS websites, and a user-selected folder. Every run displays a preview and requires Windows confirmation.
