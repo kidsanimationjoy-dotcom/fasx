@@ -12,7 +12,8 @@ data class ViewSessionInvite(
     val nonce: String,
     val endpoint: URI,
     val tlsPin: String,
-    val expiresAt: Instant
+    val expiresAt: Instant,
+    val controlInputRequested: Boolean
 )
 
 object ViewSessionInviteParser {
@@ -65,7 +66,8 @@ object ViewSessionInviteParser {
             nonce = nonce,
             endpoint = endpoint,
             tlsPin = tlsPin,
-            expiresAt = expiresAt
+            expiresAt = expiresAt,
+            controlInputRequested = json.optBoolean("controlInputRequested", false)
         )
     }
 
