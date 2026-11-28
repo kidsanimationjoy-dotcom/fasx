@@ -135,6 +135,15 @@
                             Background="#263A5C"
                             Foreground="White"
                             FontWeight="SemiBold" />
+                    <TextBlock Text="FASX Flows" FontSize="16" FontWeight="SemiBold" Margin="0,16,0,3" />
+                    <TextBlock Text="Approved local one-tap workflows" Foreground="{StaticResource FasxMuted}" FontSize="12" />
+                    <Button Content="Open FASX Flows"
+                            Click="Flows_Click"
+                            Margin="0,8,0,0"
+                            Padding="10,7"
+                            Background="#263A5C"
+                            Foreground="White"
+                            FontWeight="SemiBold" />
                     <TextBlock Text="Security Shield" FontSize="16" FontWeight="SemiBold" Margin="0,16,0,3" />
                     <TextBlock Text="Pairing and session permissions" Foreground="{StaticResource FasxMuted}" FontSize="12" />
                     <TextBlock Text="Paired devices" FontSize="13" FontWeight="SemiBold" Margin="0,12,0,2" />
