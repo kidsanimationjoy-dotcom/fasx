@@ -4,7 +4,7 @@
 
 FASX is an all-in-one personal computer command centre combining secure remote desktop, device management, customizable controls, and user-approved automation.
 
- > **Project status: early development.** Same-LAN pairing, WebRTC screen viewing, optional permission-gated input, a customizable Android SmartDeck, local Windows PC Health, local Connection Guardian metrics, and a phone-to-PC File Bridge prototype are in source. Windows Release build/tests/publish and Android debug APK assembly passed on earlier commit `c09a5980c3179d36dea578ced7f721d7ac9d8361`; the newer File Bridge changes still need CI. Physical-device verification, internet relay infrastructure and signed release packages remain outstanding; this is not a production release.
+ > **Project status: early development.** Same-LAN pairing, WebRTC screen viewing, optional permission-gated input, a customizable Android SmartDeck, local Windows PC Health, local Connection Guardian metrics, and a phone-to-PC File Bridge prototype are in source. The latest branch commit `b26c815ec5f808f68cbcd87f93e7d919aba3a29e` passed Windows Release build, unit tests, self-contained publish, and Android debug APK assembly. Real-device verification, internet relay infrastructure and signed release packages remain outstanding; this is not a production release. Physical-device verification, internet relay infrastructure and signed release packages remain outstanding; this is not a production release.
 
 ## Product vision
 
@@ -71,7 +71,7 @@ The Android app scans QR pairing or view-session invitations, asks the phone own
 
 ## Current capabilities and limitations
 
-**Implemented in source (latest build and real-device verification still pending):**
+**Implemented in source and build-validated (real-device verification still pending):**
 - Local permission policy and tests.
 - Short-lived, single-use pairing invitations.
 - Device proof verification using ECDSA P-256 / SHA-256.
@@ -94,7 +94,7 @@ The Android app scans QR pairing or view-session invitations, asks the phone own
 **Not implemented yet:**
 - Real phone-to-Windows pairing test.
 - Verified real-device screen streaming (the source implementation is present but not yet tested on the target laptop/phone).
-- Physical-device verification of pairing, screen streaming and optional input on the target laptop/phone.
+- Physical-device verification of pairing, screen streaming, optional input and phone-to-PC File Bridge on the target laptop/phone.
 - Full keyboard shortcuts, arbitrary keys, app automation, Windows-to-phone file transfer, two-way folder browsing and clipboard synchronization.
 - Internet signaling/relay and remote-from-anywhere connections.
 - FASX Flows execution and AI diagnostics.
