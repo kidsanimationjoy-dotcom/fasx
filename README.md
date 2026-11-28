@@ -87,6 +87,7 @@ The Android app scans QR pairing or view-session invitations, asks the phone own
 - Windows WebView2 video sender and Android WebView video receiver. The Windows owner must press Start and choose the screen/window.
 - Optional WebRTC data channel for pointer movement/clicks/scrolling, a limited navigation-key allowlist, and short printable text entry. The Windows host validates every message again and drops input unless `ControlInput` is currently approved.
 - Local PC Health panel with read-only Windows version, processor count, physical memory, system-drive capacity/free space, .NET version, and uptime. It refreshes only when opened or manually refreshed and does not upload telemetry.
+- Android SmartDeck editor with show/hide cards, reorder controls, locally persisted layout, and clear availability labels for planned modules.
 
 **Not implemented yet:**
 - Verified CI build or signed installer.
@@ -95,7 +96,8 @@ The Android app scans QR pairing or view-session invitations, asks the phone own
 - Physical-device verification of pairing, screen streaming and optional input on the target laptop/phone.
 - Full keyboard shortcuts, arbitrary keys, app automation, file transfer and clipboard synchronization.
 - Internet signaling/relay and remote-from-anywhere connections.
-- SmartDeck customization, FASX Flows execution and AI diagnostics.
+- FASX Flows execution and AI diagnostics.
+- Remote PC Health data query over the session (current PC Health panel is local to Windows).
 - Signed production installers/packages.
 
 ## Architecture and security
