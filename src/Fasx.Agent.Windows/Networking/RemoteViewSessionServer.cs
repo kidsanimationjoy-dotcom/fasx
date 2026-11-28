@@ -368,6 +368,11 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
         {
             throw new DirectoryNotFoundException("The selected file-transfer folder does not exist.");
         }
+        if (HasReparsePointInPath(fullPath))
+        {
+            throw new UnauthorizedAccessException(
+                "FASX cannot use a destination folder that passes through a symbolic link or junction.");
+        }
 
         lock (_sync)
         {
@@ -604,7 +609,9 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
             destinationDirectory = _fileTransferDirectory;
         }
 
-        if (string.IsNullOrWhiteSpace(destinationDirectory) || !Directory.Exists(destinationDirectory))
+        if (string.IsNullOrWhiteSpace(destinationDirectory) ||
+            !Directory.Exists(destinationDirectory) ||
+            HasReparsePointInPath(destinationDirectory))
         {
             return Results.StatusCode(StatusCodes.Status403Forbidden);
         }
@@ -725,7 +732,9 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
                 return Results.BadRequest(new { error = "The uploaded file failed its SHA-256 integrity check." });
             }
 
-            if (!_authorization.HasPermission(sessionId, SessionPermission.TransferFiles, DateTimeOffset.UtcNow))
+            if (!_authorization.HasPermission(sessionId, SessionPermission.TransferFiles, DateTimeOffset.UtcNow) ||
+                !Directory.Exists(destinationDirectory) ||
+                HasReparsePointInPath(destinationDirectory))
             {
                 return Results.StatusCode(StatusCodes.Status403Forbidden);
             }
@@ -766,6 +775,23 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
 
             _fileTransferGate.Release();
         }
+    }
+
+    private static bool HasReparsePointInPath(string directory)
+    {
+        DirectoryInfo? current = new(Path.GetFullPath(directory));
+        while (current is not null)
+        {
+            current.Refresh();
+            if ((current.Attributes & FileAttributes.ReparsePoint) != 0)
+            {
+                return true;
+            }
+
+            current = current.Parent;
+        }
+
+        return false;
     }
 
     private static string CreateUniqueFilePath(string directory, string fileName)
