@@ -21,7 +21,7 @@
 - Local approval/denial/cancellation is never exposed as a network API.
 - Pairing is not permission to view or control the screen.
 - Each view-only session uses a separate signed challenge from the paired phone.
-- Windows verifies the paired public key and issues only a ViewScreen request.
+- Windows verifies the paired public key and creates a ViewScreen request, optionally including ControlInput only when the Windows owner selected that option before generating the invitation.
 - The user must locally approve the session before any WebRTC offer is returned.
 - A short session token is required for status, offer, and answer signaling.
 - A ViewScreen approval has a separate, bounded 10-minute maximum lease.
@@ -45,13 +45,16 @@ Sensitive actions may require an additional confirmation at execution time even 
 ## Screen capture and input
 
 - Use the WebView2 Screen Capture API and Windows system picker with a visible capture indication.
-- Only a user-selected video track is sent. The view-only prototype has no remote input, audio, or data channel.
+- Only a user-selected video track is sent. A data channel is created only when the Windows owner requested and locally approved ControlInput.
 - Stop capture and revoke the view permission on local stop, capture end, lease expiry, or peer disconnect.
 - Do not implement hidden capture or bypass the operating system's capture UI.
-- Input is enabled only with a current ControlInput grant.
-- Display connected controller identity on Windows.
-- Stop input immediately when a grant is revoked or session becomes unhealthy.
-- Do not expose arbitrary command execution through input channel.
+- Input is enabled only with a current ControlInput grant, separate from ViewScreen.
+- The phone's pointer/keyboard panel is hidden until the approved data channel is open.
+- Every received message is validated again by the Windows host against a strict typed allowlist.
+- Current allowlist: normalized pointer movement, left/right click, bounded wheel events, a small navigation-key set, and short printable text entry.
+- Reject system hotkeys, arbitrary key combinations, shell or script requests, and commands outside the allowlist.
+- Check ControlInput authorization for every message and drop input immediately when the grant is revoked or session expires.
+- Keep the Windows Stop session button visible while the session is active.
 
 ## File access
 
@@ -64,7 +67,7 @@ Sensitive actions may require an additional confirmation at execution time even 
 ## Transport and credentials
 
 - Use standard WebRTC transport security (DTLS-SRTP) for screen media; do not invent media encryption.
-- The current same-LAN prototype uses browser-native RTCPeerConnection and no public STUN/TURN servers.
+- The current same-LAN prototype uses browser-native RTCPeerConnection and no public STUN/TURN servers. The optional input data channel uses the negotiated WebRTC peer connection and its standard transport security.
 - Authenticate the HTTPS signaling request using the QR-pinned host certificate and a one-time session token.
 - Never invent a cryptographic protocol.
 - Protect Windows secrets with DPAPI/Windows credential facilities and Android secrets with Android Keystore.
