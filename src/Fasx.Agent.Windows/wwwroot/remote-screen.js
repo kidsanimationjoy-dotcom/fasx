@@ -9,6 +9,7 @@
   let captureStream = null;
   let peer = null;
   let stopping = false;
+  let controlInputEnabled = false;
 
   function report(type, message, extra = {}) {
     status.textContent = message;
@@ -69,6 +70,19 @@
       const connection = peer;
 
       connection.addTrack(track, captureStream);
+      if (controlInputEnabled) {
+        const controlChannel = connection.createDataChannel("fasx-control", { ordered: true });
+        controlChannel.onmessage = event => {
+          if (typeof event.data !== "string" || event.data.length > 1024) return;
+          try {
+            const command = JSON.parse(event.data);
+            if (!command || typeof command !== "object") return;
+            window.chrome?.webview?.postMessage({ type: "input", payload: command });
+          } catch (_) {
+            // Invalid peer messages are ignored; the host validates every event again.
+          }
+        };
+      }
       connection.onconnectionstatechange = () => {
         const state = connection.connectionState;
         report("peerState", "Phone connection: " + state, { state });
@@ -153,7 +167,9 @@
 
   window.chrome?.webview?.addEventListener("message", event => {
     const message = event.data;
-    if (message?.type === "answer") {
+    if (message?.type === "configure") {
+      controlInputEnabled = message.controlInputEnabled === true;
+    } else if (message?.type === "answer") {
       applyAnswer(message.sdp);
     } else if (message?.type === "stop") {
       stopRemoteScreen(true);
@@ -163,6 +179,7 @@
   startButton.addEventListener("click", startRemoteScreen);
   stopButton.addEventListener("click", () => stopRemoteScreen(true));
   window.fasxStopRemoteScreen = () => stopRemoteScreen(false);
+  window.fasxConfigureRemoteScreen = enabled => { controlInputEnabled = enabled === true; };
 
   report("status", "Ready. Press Start screen sharing to open the Windows picker.");
 })();
