@@ -4,6 +4,7 @@
   const status = document.getElementById("status");
   const video = document.getElementById("remoteVideo");
   const controls = document.getElementById("remoteControls");
+  const metrics = document.getElementById("connectionMetrics");
   const textInput = document.getElementById("remoteText");
   const sendTextButton = document.getElementById("sendTextButton");
   let peer = null;
@@ -11,6 +12,8 @@
   let controlAllowed = false;
   let pointerDown = null;
   let lastMoveAt = 0;
+  let statsTimer = null;
+  let previousVideoStats = null;
 
   function report(message) {
     status.textContent = message;
@@ -115,6 +118,7 @@
           report(controlAllowed
             ? "Receiving the Windows screen. Waiting for the approved input channel…"
             : "Receiving the Windows screen. View-only mode is active.");
+          startConnectionStats(connection);
         }
       };
 
@@ -163,7 +167,66 @@
     }
   }
 
+  function startConnectionStats(connection) {
+    stopConnectionStats();
+    const sample = async () => {
+      if (peer !== connection || connection.connectionState !== "connected") return;
+      try {
+        const reportSet = await connection.getStats();
+        let videoStats = null;
+        let roundTripSeconds = null;
+        for (const item of reportSet.values()) {
+          if (item.type === "inbound-rtp" && (item.kind === "video" || item.mediaType === "video")) {
+            videoStats = item;
+          }
+          if (item.type === "candidate-pair" && item.state === "succeeded" && item.nominated) {
+            if (typeof item.currentRoundTripTime === "number") {
+              roundTripSeconds = item.currentRoundTripTime;
+            }
+          }
+        }
+
+        if (videoStats) {
+          const now = performance.now();
+          const bytes = Number(videoStats.bytesReceived || 0);
+          const frames = Number(videoStats.framesDecoded || 0);
+          let bitrate = null;
+          let frameRate = null;
+          if (previousVideoStats && now > previousVideoStats.at) {
+            const seconds = (now - previousVideoStats.at) / 1000;
+            bitrate = Math.max(0, ((bytes - previousVideoStats.bytes) * 8) / seconds / 1000000);
+            frameRate = Math.max(0, (frames - previousVideoStats.frames) / seconds);
+          }
+          previousVideoStats = { at: now, bytes, frames };
+
+          const dimensions = videoStats.frameWidth && videoStats.frameHeight
+            ? videoStats.frameWidth + "×" + videoStats.frameHeight
+            : "resolution pending";
+          const fps = frameRate === null ? "measuring…" : frameRate.toFixed(1) + " fps";
+          const mbps = bitrate === null ? "measuring…" : bitrate.toFixed(2) + " Mbps";
+          const rtt = roundTripSeconds === null ? "RTT unavailable" : Math.round(roundTripSeconds * 1000) + " ms RTT";
+          metrics.textContent = dimensions + " • " + fps + " • " + mbps + " • " + rtt;
+        }
+      } catch (_) {
+        metrics.textContent = "Connection statistics unavailable";
+      }
+    };
+
+    statsTimer = setInterval(sample, 2000);
+    sample();
+  }
+
+  function stopConnectionStats() {
+    if (statsTimer !== null) {
+      clearInterval(statsTimer);
+      statsTimer = null;
+    }
+    previousVideoStats = null;
+    metrics.textContent = "Connection metrics appear during an active stream.";
+  }
+
   function stopFasxRemoteView(updateStatus = true) {
+    stopConnectionStats();
     if (inputChannel) {
       inputChannel.onopen = null;
       inputChannel.onclose = null;
