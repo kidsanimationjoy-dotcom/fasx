@@ -2,7 +2,7 @@
 
 ## Status
 
-**Source implementation:** a same-LAN WebRTC screen-view path is in the repository. It includes separately approved input, local Connection Guardian metrics, and a separate phone-to-PC file-transfer path. Windows Release build, unit tests, self-contained publish, and Android debug APK assembly passed on branch commit `b26c815ec5f808f68cbcd87f93e7d919aba3a29e`; physical-device tests are still required.
+**Source implementation:** a same-LAN WebRTC screen-view path is in the repository. It includes separately approved input, local Connection Guardian metrics, and a separate phone-to-PC file-transfer path. Windows Release build, unit tests, self-contained publish, and Android debug APK assembly passed on branch commit `a59722d49cccae7b7e3927d189b0e286ae998979`; physical-device tests are still required.
 
 **Release status:** Windows build, tests, self-contained publish and Android debug APK assembly passed on the commit above. A real-device same-Wi-Fi test, File Bridge transfer, permission-revocation test and performance measurements are still required. Do not treat the source implementation as a verified remote-desktop release until the Windows companion and Android app are tested together on actual devices.
 
