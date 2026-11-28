@@ -340,7 +340,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                updateUiStatus("View-only request sent. Approve View screen on the Windows computer.")
+                updateUiStatus("Session request sent. Review and approve the requested permissions on Windows.")
                 val statusUrl = invite.endpoint.resolve(
                     "/api/view/status/${invite.sessionId}"
                 ).toString()
@@ -362,9 +362,9 @@ class MainActivity : ComponentActivity() {
 
                     when (status) {
                         "AwaitingLocalApproval" ->
-                            updateUiStatus("Waiting for the Windows user to approve View screen only.")
+                            updateUiStatus("Waiting for the Windows owner to approve the requested session permissions.")
                         "Approved" -> {
-                            updateUiStatus("Windows approved View screen. Waiting for the screen stream…")
+                            updateUiStatus("Windows approved the session. Waiting for the screen stream…")
                             val offerRequest = Request.Builder()
                                 .url(invite.endpoint.resolve("/api/view/offer/${invite.sessionId}").toString())
                                 .header("X-FASX-Session-Token", invite.secret)
@@ -556,7 +556,7 @@ class MainActivity : ComponentActivity() {
                 val request = Request.Builder()
                     .url(uploadUrl)
                     .header("X-FASX-Session-Token", invite.secret)
-                    .put(temporaryFile.asRequestBody("application/octet-stream".toMediaType()))
+                    .put(tempFile.asRequestBody("application/octet-stream".toMediaType()))
                     .build()
 
                 client.newCall(request).execute().use { response ->
