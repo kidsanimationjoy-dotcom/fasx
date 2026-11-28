@@ -45,7 +45,7 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
     private bool _disposed;
 
     private const int MaximumSdpLength = 48 * 1024;
-    public const long MaximumFileTransferBytes = 20L * 1024 * 1024;
+    public const long MaximumFileTransferBytes = FileTransferPolicy.MaximumFileSizeBytes;
 
     private RemoteViewSessionServer(
         WebApplication app,
@@ -610,8 +610,7 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
         }
 
         if (context.Request.ContentLength is not long contentLength ||
-            contentLength <= 0 ||
-            contentLength > MaximumFileTransferBytes)
+            !FileTransferPolicy.IsSizeAllowed(contentLength))
         {
             return Results.BadRequest(new { error = "The file must be between 1 byte and 20 MB." });
         }
@@ -636,7 +635,7 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
             CryptographicOperations.ZeroMemory(nameBytes);
         }
 
-        if (!IsSafeFileName(fileName))
+        if (!FileTransferPolicy.IsSafeFileName(fileName))
         {
             return Results.BadRequest(new { error = "The file name is not allowed." });
         }
@@ -767,29 +766,6 @@ public sealed class RemoteViewSessionServer : IAsyncDisposable
 
             _fileTransferGate.Release();
         }
-    }
-
-    private static bool IsSafeFileName(string fileName)
-    {
-        if (string.IsNullOrWhiteSpace(fileName) ||
-            fileName.Length > 120 ||
-            fileName is "." or ".." ||
-            fileName != Path.GetFileName(fileName) ||
-            fileName.Any(character => Path.GetInvalidFileNameChars().Contains(character)) ||
-            fileName.EndsWith(' ') ||
-            fileName.EndsWith('.'))
-        {
-            return false;
-        }
-
-        var stem = Path.GetFileNameWithoutExtension(fileName).TrimEnd(' ', '.');
-        var reserved = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "CON", "PRN", "AUX", "NUL",
-            "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
-            "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"
-        };
-        return stem.Length > 0 && !reserved.Contains(stem);
     }
 
     private static string CreateUniqueFilePath(string directory, string fileName)
