@@ -5,6 +5,7 @@ using System.Windows.Threading;
 using Fasx.Agent.Core.Security;
 using Fasx.Agent.Core.Sessions;
 using Fasx.Agent.Windows.Networking;
+using Fasx.Agent.Windows.Input;
 using Microsoft.Web.WebView2.Core;
 
 namespace Fasx.Agent.Windows;
@@ -18,6 +19,7 @@ public partial class RemoteScreenWindow : Window
     private bool _browserReady;
     private bool _closing;
     private bool _answerDelivered;
+    private DateTimeOffset _lastPointerMoveUtc = DateTimeOffset.MinValue;
 
     public RemoteScreenWindow(
         RemoteViewSessionServer server,
@@ -153,6 +155,10 @@ public partial class RemoteScreenWindow : Window
                     SetStatus("Screen offer is ready. Waiting for the approved phone to answer.");
                     break;
 
+                case "input":
+                    HandleRemoteInput(root);
+                    break;
+
                 case "status":
                     if (root.TryGetProperty("message", out var messageElement))
                     {
@@ -184,6 +190,49 @@ public partial class RemoteScreenWindow : Window
         catch (JsonException)
         {
             SetStatus("The screen sender returned an invalid status message.");
+        }
+    }
+
+    private void HandleRemoteInput(JsonElement root)
+    {
+        if (!_authorization.HasPermission(
+            _sessionId,
+            SessionPermission.ControlInput,
+            DateTimeOffset.UtcNow))
+        {
+            return;
+        }
+
+        if (!root.TryGetProperty("payload", out var payload))
+        {
+            return;
+        }
+
+        try
+        {
+            var command = JsonSerializer.Deserialize<RemoteInputMessage>(
+                payload.GetRawText(),
+                new JsonSerializerOptions(JsonSerializerDefaults.Web));
+            if (command is null)
+            {
+                return;
+            }
+
+            if (command.Kind == "pointer" && command.Action == "move")
+            {
+                var now = DateTimeOffset.UtcNow;
+                if (now - _lastPointerMoveUtc < TimeSpan.FromMilliseconds(16)) return;
+                _lastPointerMoveUtc = now;
+            }
+
+            if (!WindowsInputController.TryDispatch(command, out var status))
+            {
+                SetStatus(status);
+            }
+        }
+        catch (JsonException)
+        {
+            // Ignore malformed peer input. The permission check remains fail-closed.
         }
     }
 
