@@ -77,6 +77,15 @@ public partial class MainWindow : Window
         diagnosticsWindow.ShowDialog();
     }
 
+    private void Flows_Click(object sender, RoutedEventArgs e)
+    {
+        var flowsWindow = new FasxFlowsWindow
+        {
+            Owner = this
+        };
+        flowsWindow.ShowDialog();
+    }
+
     private void RefreshPairedDeviceCount()
     {
         if (_pairingCoordinator is not null)
