@@ -59,10 +59,13 @@
 - [ ] Connection Guardian: latency, stream state, and reconnect behaviour.
 
 ## Milestone 4 — File Bridge and device health
-- User-selected folder roots.
-- Two-way file transfer with integrity checks and cancellation.
-- CPU, memory, disk, battery, and OS information.
-- Health summaries with read-only default behaviour.
+**Status: local read-only PC Health foundation added; file transfer and richer health intelligence remain.**
+- [x] Local PC Health window with Windows version, logical processor count, physical memory, system-drive free/total capacity, .NET runtime and uptime.
+- [x] Diagnostics refresh only on opening the panel or pressing Refresh; no telemetry upload.
+- [ ] User-selected folder roots.
+- [ ] Two-way file transfer with integrity checks and cancellation.
+- [ ] Battery, disk health, CPU utilization and additional hardware information.
+- [ ] Health summaries with read-only default behaviour.
 
 ## Milestone 5 — SmartDeck and Context Control
 - Customizable control cards.
